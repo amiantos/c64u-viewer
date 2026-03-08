@@ -2,6 +2,12 @@
 
 A native macOS app for viewing the video and audio stream from a [Commodore 64 Ultimate](https://www.commodore.net) device, with real-time CRT shader effects.
 
+## Screenshots
+
+| General Settings | CRT Effects (Amber) | CRT Effects (Game) |
+|:---:|:---:|:---:|
+| ![General Settings](screenshots/C64U%20Viewer%20Screenshot%201.png) | ![CRT Effects Amber](screenshots/C64U%20Viewer%20Screenshot%202.png) | ![CRT Effects Game](screenshots/C64U%20Viewer%20Screenshot%203.png) |
+
 ## Features
 
 - **Live video and audio** — Receives the C64U's UDP video and audio streams directly
@@ -50,6 +56,12 @@ The app communicates with the C64U over three channels:
 - **UDP port 11001** — Audio stream (16-bit stereo PCM at ~48kHz)
 
 Video frames are assembled from UDP packets, converted from the C64's 4-bit palette to RGBA, then rendered through a Metal CRT shader pipeline before display.
+
+## Links
+
+- [Quick Start Guide](https://discuss.bradroot.me/t/c64u-viewer-quick-start-guide/80/1)
+- [Devlog](https://discuss.bradroot.me/t/c64u-viewer-devlog/78/10)
+- [Support Forum](https://discuss.bradroot.me/tag/c64u-viewer/35)
 
 ## License
 
