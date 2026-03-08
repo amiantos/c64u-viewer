@@ -2,11 +2,9 @@
 
 A native macOS app for viewing the video and audio stream from a [Commodore 64 Ultimate](https://www.commodore.net) device, with real-time CRT shader effects.
 
-## Screenshots
+![C64U Viewer showing a game with CRT effects](screenshots/C64U%20Viewer%20Screenshot%203.png)
 
-| General Settings | CRT Effects (Amber) | CRT Effects (Game) |
-|:---:|:---:|:---:|
-| ![General Settings](screenshots/C64U%20Viewer%20Screenshot%201.png) | ![CRT Effects Amber](screenshots/C64U%20Viewer%20Screenshot%202.png) | ![CRT Effects Game](screenshots/C64U%20Viewer%20Screenshot%203.png) |
+More screenshots: [General Settings](screenshots/C64U%20Viewer%20Screenshot%201.png) · [CRT Effects (Amber)](screenshots/C64U%20Viewer%20Screenshot%202.png)
 
 ## Features
 
@@ -20,7 +18,7 @@ A native macOS app for viewing the video and audio stream from a [Commodore 64 U
 
 ## Requirements
 
-- macOS 26.0 or later
+- macOS 14.6 or later
 - Xcode 26 (to build)
 - A Commodore 64 Ultimate device on the local network
 
