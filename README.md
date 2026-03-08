@@ -22,6 +22,10 @@ More screenshots: [General Settings](screenshots/C64U%20Viewer%20Screenshot%201.
 - Xcode 26 (to build)
 - A Commodore 64 Ultimate device on the local network
 
+## Download
+
+- [Download C64U Viewer for macOS 14.6 or later](https://amiantos.s3.amazonaws.com/c64u-viewer-1.0.zip)
+
 ## Building
 
 Open `C64U Viewer.xcodeproj` in Xcode and build. No package dependencies to resolve.
