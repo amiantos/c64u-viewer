@@ -41,21 +41,33 @@ struct ToolboxOverlayView: View {
                     Divider()
                 }
 
-                if let error = connection.connectionError {
+                if connection.isWaitingForReboot {
+                    HStack(spacing: 6) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Waiting for device to restart...")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } else if let error = connection.connectionError {
                     Label(error, systemImage: "exclamationmark.triangle")
                         .font(.caption)
                         .foregroundStyle(.red)
                 }
 
-                // File Runners
-                fileRunnersSection
+                // Audio Controls
+                audioSection
+                Divider()
+
+                // CRT Preset
+                presetSection
                 Divider()
 
                 // Machine Controls
                 machineControlsSection
             }
             .padding(20)
-            .frame(width: 360)
+            .frame(width: 380)
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
             .shadow(radius: 20)
         }
@@ -86,34 +98,46 @@ struct ToolboxOverlayView: View {
         .font(.caption)
     }
 
-    private var fileRunnersSection: some View {
+    private var audioSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Run File")
+            Text("Audio")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-
-            HStack(spacing: 8) {
-                runnerButton("Play SID", type: .sid, extensions: ["sid"])
-                runnerButton("Run PRG", type: .prg, extensions: ["prg"])
-                runnerButton("Run CRT", type: .crt, extensions: ["crt"])
-            }
+            SliderRow(label: "Volume", value: Binding(
+                get: { connection.volume },
+                set: {
+                    connection.volume = $0
+                    connection.isMuted = false
+                }
+            ), range: 0...1)
+            SliderRow(label: "Balance", value: $connection.balance, range: -1...1)
         }
     }
 
-    private func runnerButton(_ label: String, type: RunnerType, extensions: [String]) -> some View {
-        Button(label) {
-            let panel = NSOpenPanel()
-            panel.allowedContentTypes = extensions.compactMap {
-                .init(filenameExtension: $0)
+    private var presetSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("CRT Preset")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Picker("Preset", selection: Binding(
+                get: { connection.presetManager.selectedIdentifier },
+                set: { connection.selectPreset($0) }
+            )) {
+                ForEach(CRTPreset.allCases) { preset in
+                    let modified = connection.presetManager.isModified(preset)
+                    Text(modified ? "\(preset.rawValue) *" : preset.rawValue)
+                        .tag(PresetIdentifier.builtIn(preset))
+                }
+                if !connection.presetManager.customPresets.isEmpty {
+                    Divider()
+                    ForEach(connection.presetManager.customPresets) { custom in
+                        Text(custom.name)
+                            .tag(PresetIdentifier.custom(custom.id))
+                    }
+                }
             }
-            panel.allowsMultipleSelection = false
-            if panel.runModal() == .OK, let url = panel.url,
-               let data = try? Data(contentsOf: url) {
-                connection.runFile(type: type, data: data)
-            }
+            .labelsHidden()
         }
-        .buttonStyle(.bordered)
-        .controlSize(.small)
     }
 
     private var machineControlsSection: some View {
@@ -123,12 +147,49 @@ struct ToolboxOverlayView: View {
                 .foregroundStyle(.secondary)
 
             HStack(spacing: 8) {
+                if connection.streamsActive {
+                    Button("Stop Streams") {
+                        connection.stopStreams()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .tint(.red)
+                } else {
+                    Button("Start Streams") {
+                        connection.startStreams()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+
+                Button("Run File...") {
+                    let panel = NSOpenPanel()
+                    panel.allowedContentTypes = ["sid", "prg", "crt"].compactMap {
+                        .init(filenameExtension: $0)
+                    }
+                    panel.allowsMultipleSelection = false
+                    if panel.runModal() == .OK, let url = panel.url,
+                       let data = try? Data(contentsOf: url) {
+                        let ext = url.pathExtension.lowercased()
+                        let type: RunnerType = switch ext {
+                        case "sid": .sid
+                        case "crt": .crt
+                        default: .prg
+                        }
+                        connection.runFile(type: type, data: data)
+                    }
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+
                 Button("Menu") {
                     connection.machineAction(.menuButton)
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
+            }
 
+            HStack(spacing: 8) {
                 Button("Reset") {
                     showResetConfirm = true
                 }
@@ -148,6 +209,10 @@ struct ToolboxOverlayView: View {
                 .controlSize(.small)
                 .tint(.red)
             }
+
+            Text("Run File accepts .sid, .prg, and .crt files")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
         }
     }
 }

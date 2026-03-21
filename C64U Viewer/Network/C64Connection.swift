@@ -153,12 +153,7 @@ final class C64Connection {
                 let info = try await client.fetchInfo()
                 self.deviceInfo = info
                 print("C64U device: \(info.product) v\(info.firmwareVersion) (\(info.hostname))")
-
-                // Start video and audio streams
-                if let localIP = getLocalIPAddress() {
-                    try await client.startStream("video", clientIP: localIP, port: videoPort)
-                    try await client.startStream("audio", clientIP: localIP, port: audioPort)
-                }
+                startStreams()
             } catch {
                 print("C64U API error: \(error.localizedDescription)")
                 self.connectionError = error.localizedDescription
@@ -191,12 +186,48 @@ final class C64Connection {
         apiClient = nil
         deviceInfo = nil
         connectionError = nil
+        streamsActive = false
+        isWaitingForReboot = false
         fpsTimer?.cancel()
         fpsTimer = nil
         framesPerSecond = 0
     }
 
     // MARK: - Toolbox Actions
+
+    var streamsActive = false
+
+    func startStreams() {
+        guard let client = apiClient else { return }
+        Task {
+            do {
+                if let localIP = getLocalIPAddress() {
+                    try await client.startStream("video", clientIP: localIP, port: videoPort)
+                    try await client.startStream("audio", clientIP: localIP, port: audioPort)
+                    self.streamsActive = true
+                    self.connectionError = nil
+                }
+            } catch {
+                print("C64U stream start error: \(error.localizedDescription)")
+                self.connectionError = error.localizedDescription
+            }
+        }
+    }
+
+    func stopStreams() {
+        guard let client = apiClient else { return }
+        Task {
+            do {
+                try await client.stopStream("video")
+                try await client.stopStream("audio")
+                self.streamsActive = false
+                self.connectionError = nil
+            } catch {
+                print("C64U stream stop error: \(error.localizedDescription)")
+                self.connectionError = error.localizedDescription
+            }
+        }
+    }
 
     func runFile(type: RunnerType, data: Data) {
         guard let client = apiClient else { return }
@@ -214,6 +245,8 @@ final class C64Connection {
         }
     }
 
+    var isWaitingForReboot = false
+
     func machineAction(_ action: MachineAction) {
         guard let client = apiClient else { return }
         Task {
@@ -224,11 +257,44 @@ final class C64Connection {
                 case .powerOff: try await client.machinePowerOff()
                 case .menuButton: try await client.menuButton()
                 }
+
+                if action == .reboot {
+                    await waitForDeviceAndRestartStreams(client: client)
+                } else if action == .powerOff {
+                    disconnect()
+                }
             } catch {
                 print("C64U machine error: \(error.localizedDescription)")
                 self.connectionError = error.localizedDescription
             }
         }
+    }
+
+    private func waitForDeviceAndRestartStreams(client: C64APIClient) async {
+        isWaitingForReboot = true
+        streamsActive = false
+        connectionError = "Waiting for device to restart..."
+
+        // Wait a few seconds for device to go down
+        try? await Task.sleep(for: .seconds(3))
+
+        // Poll until device responds (up to 60 seconds)
+        for _ in 0..<30 {
+            guard isConnected else { break }
+            do {
+                let info = try await client.fetchInfo()
+                self.deviceInfo = info
+                self.connectionError = nil
+                self.isWaitingForReboot = false
+                startStreams()
+                return
+            } catch {
+                try? await Task.sleep(for: .seconds(2))
+            }
+        }
+
+        isWaitingForReboot = false
+        connectionError = "Device did not come back online"
     }
 
     // MARK: - Capture
@@ -290,6 +356,6 @@ enum RunnerType {
     case sid, prg, crt
 }
 
-enum MachineAction {
+enum MachineAction: Equatable {
     case reset, reboot, powerOff, menuButton
 }
