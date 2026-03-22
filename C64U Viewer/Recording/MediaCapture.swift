@@ -18,7 +18,6 @@ final class MediaCapture {
     private var pixelBufferAdaptor: AVAssetWriterInputPixelBufferAdaptor?
 
     private var recordingStartTime: CFAbsoluteTime = 0
-    private var audioSampleOffset: Int64 = 0
 
     // CVPixelBuffer-backed MTLTexture for zero-copy GPU capture
     private var capturePixelBuffer: CVPixelBuffer?
@@ -146,7 +145,6 @@ final class MediaCapture {
             self.audioInput = aInput
             self.pixelBufferAdaptor = adaptor
             self.recordingStartTime = CFAbsoluteTimeGetCurrent()
-            self.audioSampleOffset = 0
             self.isRecording = true
 
             renderer?.isRecording = true
@@ -270,7 +268,8 @@ final class MediaCapture {
         )
         guard let fmt = formatDesc else { return }
 
-        let timestamp = CMTime(value: audioSampleOffset, timescale: 48000)
+        let elapsed = CFAbsoluteTimeGetCurrent() - recordingStartTime
+        let timestamp = CMTime(seconds: elapsed, preferredTimescale: 48000)
 
         var sampleBuffer: CMSampleBuffer?
         var timing = CMSampleTimingInfo(
@@ -323,7 +322,6 @@ final class MediaCapture {
             input.append(sb)
         }
 
-        audioSampleOffset += Int64(sampleCount)
     }
 
     // MARK: - Helpers

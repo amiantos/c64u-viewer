@@ -132,5 +132,14 @@ struct ContentView: View {
                 showOverlay = false
             }
         }
+        .onChange(of: connection.isRecording) { _, isRecording in
+            if let window = NSApplication.shared.windows.first {
+                if isRecording {
+                    window.styleMask.remove(.resizable)
+                } else {
+                    window.styleMask.insert(.resizable)
+                }
+            }
+        }
     }
 }
