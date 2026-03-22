@@ -10,22 +10,9 @@
 		44655BC82F5B50EE00777AC7 /* C64 Ultimate Toolbox.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "C64 Ultimate Toolbox.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		447681B62F6F79DD008ED284 /* Exceptions for "C64U Viewer" folder in "C64 Ultimate Toolbox" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = 44655BC72F5B50EE00777AC7 /* C64 Ultimate Toolbox */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		44655BCA2F5B50EE00777AC7 /* C64U Viewer */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				447681B62F6F79DD008ED284 /* Exceptions for "C64U Viewer" folder in "C64 Ultimate Toolbox" target */,
-			);
 			path = "C64U Viewer";
 			sourceTree = "<group>";
 		};
