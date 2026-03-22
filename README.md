@@ -4,7 +4,7 @@ A native macOS app for streaming, viewing, and controlling your [Commodore 64 Ul
 
 ![C64 Ultimate Toolbox showing a game with CRT effects](screenshots/C64%20Ultimate%20Toolbox%20Screenshot%203.png)
 
-More screenshots: [General Settings](screenshots/C64%20Ultimate%20Toolbox%20Screenshot%201.png) · [CRT Effects (Amber)](screenshots/C64%20Ultimate%20Toolbox%20Screenshot%202.png)
+More screenshots: [BASIC Prompt](screenshots/C64%20Ultimate%20Toolbox%20Screenshot%201.png) · [CRT Effects (Amber)](screenshots/C64%20Ultimate%20Toolbox%20Screenshot%202.png)
 
 ## Features
 
