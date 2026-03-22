@@ -17,8 +17,9 @@ struct OverlayContainerView: View {
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.4)
+            Color.black.opacity(mode == .crtSettings ? 0.0 : 0.4)
                 .onTapGesture { onDismiss() }
+                .animation(.easeInOut(duration: 0.2), value: mode)
 
             switch mode {
             case .controls:
