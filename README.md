@@ -67,9 +67,9 @@ Video frames are assembled from UDP packets, converted from the C64's 4-bit pale
 
 ## Links
 
-- [Quick Start Guide](https://discuss.bradroot.me/t/c64u-viewer-quick-start-guide/80/1)
-- [Devlog](https://discuss.bradroot.me/t/c64u-viewer-devlog/78/10)
-- [Support Forum](https://discuss.bradroot.me/tag/c64u-viewer/35)
+- [Quick Start Guide](https://discuss.bradroot.me/t/c64-ultimate-toolbox-quick-start-guide/80)
+- [Devlog](https://discuss.bradroot.me/t/c64u-viewer-c64-ultimate-toolbox-devlog/78)
+- [Support Forum](https://discuss.bradroot.me/tags/c/projects/13/c64-ultimate-toolbox/36)
 
 ## License
 
