@@ -2,9 +2,9 @@
 
 A native macOS app for streaming, viewing, and controlling your [Commodore 64 Ultimate](https://www.commodore.net) device — with real-time CRT shader effects, REST API integration, and keyboard forwarding.
 
-![C64U Viewer showing a game with CRT effects](screenshots/C64U%20Viewer%20Screenshot%203.png)
+![C64 Ultimate Toolbox showing a game with CRT effects](screenshots/C64U%20Viewer%20Screenshot%203.png?v=2)
 
-More screenshots: [General Settings](screenshots/C64U%20Viewer%20Screenshot%201.png) · [CRT Effects (Amber)](screenshots/C64U%20Viewer%20Screenshot%202.png)
+More screenshots: [General Settings](screenshots/C64U%20Viewer%20Screenshot%201.png?v=2) · [CRT Effects (Amber)](screenshots/C64U%20Viewer%20Screenshot%202.png?v=2)
 
 ## Features
 
