@@ -26,8 +26,10 @@ struct HomeView: View {
                     Divider().padding(.horizontal)
                     toolboxSection
                 }
+                .frame(maxWidth: 500)
                 .padding(.horizontal, 24)
                 .padding(.bottom, 24)
+                .frame(maxWidth: .infinity)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -47,17 +49,15 @@ struct HomeView: View {
                     .foregroundStyle(.secondary)
             }
 
+            LabeledContent("Video Port") {
+                TextField("11000", text: $videoPortText)
+                    .textFieldStyle(.roundedBorder)
+            }
+            LabeledContent("Audio Port") {
+                TextField("11001", text: $audioPortText)
+                    .textFieldStyle(.roundedBorder)
+            }
             HStack {
-                LabeledContent("Video Port") {
-                    TextField("11000", text: $videoPortText)
-                        .frame(width: 80)
-                        .textFieldStyle(.roundedBorder)
-                }
-                LabeledContent("Audio Port") {
-                    TextField("11001", text: $audioPortText)
-                        .frame(width: 80)
-                        .textFieldStyle(.roundedBorder)
-                }
                 Spacer()
                 Button("Listen") {
                     let vp = UInt16(videoPortText) ?? 11000
@@ -98,20 +98,29 @@ struct HomeView: View {
                 .font(.headline)
 
             HStack {
-                LabeledContent("IP Address") {
-                    TextField("192.168.1.24", text: $ipAddress)
-                        .frame(width: 160)
-                        .textFieldStyle(.roundedBorder)
-                }
-                LabeledContent("Password") {
-                    SecureField("optional", text: $password)
-                        .frame(width: 120)
-                        .textFieldStyle(.roundedBorder)
-                }
-                Toggle("Save", isOn: $savePassword)
+                Text("IP Address")
+                    .frame(width: 80, alignment: .trailing)
+                TextField("192.168.1.24", text: $ipAddress)
+                    .textFieldStyle(.roundedBorder)
+            }
+            HStack {
+                Text("Password")
+                    .frame(width: 80, alignment: .trailing)
+                SecureField("optional", text: $password)
+                    .textFieldStyle(.roundedBorder)
+                Toggle("Save Password", isOn: $savePassword)
                     .toggleStyle(.checkbox)
+                    .disabled(password.isEmpty)
+            }
+            if let error = connection.connectionError {
+                Label(error, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+            HStack {
                 Spacer()
                 Button("Connect") {
+                    connection.connectionError = nil
                     connection.connectToolbox(
                         ip: ipAddress,
                         password: password.isEmpty ? nil : password,

@@ -127,28 +127,37 @@ final class C64Connection {
         connectionError = nil
         let client = C64APIClient(host: ip, password: password)
         apiClient = client
-        keyboardForwarder = C64KeyboardForwarder(client: client)
 
-        // Start UDP listeners
-        videoReceiver.start(port: videoPort)
-        audioReceiver.start(port: audioPort)
-        audioPlayer.start()
-
-        isConnected = true
-        startFPSCounter()
-
-        recentConnections.addToolbox(ipAddress: ip, password: password, savePassword: savePassword)
-
-        // Fetch device info and start streams via API
+        // Verify connection before fully committing
         Task {
             do {
                 let info = try await client.fetchInfo()
                 self.deviceInfo = info
                 print("C64U device: \(info.product) v\(info.firmwareVersion) (\(info.hostname))")
+
+                // Connection verified — start everything
+                keyboardForwarder = C64KeyboardForwarder(client: client)
+                videoReceiver.start(port: videoPort)
+                audioReceiver.start(port: audioPort)
+                audioPlayer.start()
+                isConnected = true
+                startFPSCounter()
+                recentConnections.addToolbox(ipAddress: ip, password: password, savePassword: savePassword)
                 startStreams()
-            } catch {
+            } catch let error as C64APIError {
+                if case .httpError(403) = error {
+                    self.connectionError = "Incorrect password"
+                } else {
+                    self.connectionError = error.localizedDescription
+                }
                 print("C64U API error: \(error.localizedDescription)")
+                apiClient = nil
+                connectionMode = nil
+            } catch {
                 self.connectionError = error.localizedDescription
+                print("C64U API error: \(error.localizedDescription)")
+                apiClient = nil
+                connectionMode = nil
             }
         }
     }

@@ -7,6 +7,7 @@ import SwiftUI
 enum OverlayMode {
     case controls
     case crtSettings
+    case audio
 }
 
 struct OverlayContainerView: View {
@@ -24,6 +25,7 @@ struct OverlayContainerView: View {
                 ControlsOverlayView(
                     connection: connection,
                     onCustomize: { mode = .crtSettings },
+                    onAudio: { mode = .audio },
                     onDismiss: onDismiss
                 )
             case .crtSettings:
@@ -32,10 +34,16 @@ struct OverlayContainerView: View {
                     onBack: { mode = .controls },
                     onDismiss: onDismiss
                 )
+            case .audio:
+                AudioSettingsOverlayView(
+                    connection: connection,
+                    onBack: { mode = .controls },
+                    onDismiss: onDismiss
+                )
             }
         }
         .onKeyPress(.escape) {
-            if mode == .crtSettings {
+            if mode != .controls {
                 mode = .controls
             } else {
                 onDismiss()

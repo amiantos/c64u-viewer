@@ -8,6 +8,7 @@ internal import UniformTypeIdentifiers
 struct ControlsOverlayView: View {
     @Bindable var connection: C64Connection
     let onCustomize: () -> Void
+    let onAudio: () -> Void
     let onDismiss: () -> Void
 
     @State private var showResetConfirm = false
@@ -28,8 +29,6 @@ struct ControlsOverlayView: View {
                 if connection.connectionMode == .toolbox {
                     deviceInfoTile
                 }
-
-                audioSection
 
                 if connection.connectionMode == .toolbox {
                     controlGrid
@@ -132,32 +131,15 @@ struct ControlsOverlayView: View {
         }
     }
 
-    // MARK: - Audio
-
-    private var audioSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            sectionHeader("Audio")
-            VStack(spacing: 6) {
-                SliderRow(label: "Volume", value: Binding(
-                    get: { connection.volume },
-                    set: {
-                        connection.volume = $0
-                        connection.isMuted = false
-                    }
-                ), range: 0...1)
-                SliderRow(label: "Balance", value: $connection.balance, range: -1...1)
-            }
-            .padding(12)
-            .background(.background.opacity(0.6), in: RoundedRectangle(cornerRadius: 12))
-        }
-    }
-
     // MARK: - Viewer Controls
 
     private var viewerControls: some View {
         VStack(alignment: .leading, spacing: 8) {
             sectionHeader("Controls")
             LazyVGrid(columns: tileColumns, spacing: 10) {
+                controlTile("Audio", icon: "speaker.wave.2.fill", color: .green) {
+                    onAudio()
+                }
                 controlTile("CRT Filter", icon: "tv", color: .indigo) {
                     onCustomize()
                 }
@@ -171,6 +153,30 @@ struct ControlsOverlayView: View {
         VStack(alignment: .leading, spacing: 8) {
             sectionHeader("Controls")
             LazyVGrid(columns: tileColumns, spacing: 10) {
+                controlTile("Audio", icon: "speaker.wave.2.fill", color: .green) {
+                    onAudio()
+                }
+
+                controlTile("CRT Filter", icon: "tv", color: .indigo) {
+                    onCustomize()
+                }
+
+                if let forwarder = connection.keyboardForwarder {
+                    if forwarder.isEnabled {
+                        controlTile("Keyboard", icon: "keyboard.fill", color: .blue) {
+                            forwarder.isEnabled = false
+                        }
+                    } else {
+                        controlTile("Keyboard", icon: "keyboard", color: .gray) {
+                            if UserDefaults.standard.bool(forKey: Self.keyboardInfoShownKey) {
+                                forwarder.isEnabled = true
+                            } else {
+                                showKeyboardInfo = true
+                            }
+                        }
+                    }
+                }
+
                 if connection.streamsActive {
                     controlTile("Stop Streams", icon: "stop.circle.fill", color: .red) {
                         connection.stopStreams()
@@ -213,26 +219,6 @@ struct ControlsOverlayView: View {
 
                 controlTile("Power Off", icon: "power", color: .red) {
                     showPowerOffConfirm = true
-                }
-
-                controlTile("CRT Filter", icon: "tv", color: .indigo) {
-                    onCustomize()
-                }
-
-                if let forwarder = connection.keyboardForwarder {
-                    if forwarder.isEnabled {
-                        controlTile("Keyboard", icon: "keyboard.fill", color: .blue) {
-                            forwarder.isEnabled = false
-                        }
-                    } else {
-                        controlTile("Keyboard", icon: "keyboard", color: .gray) {
-                            if UserDefaults.standard.bool(forKey: Self.keyboardInfoShownKey) {
-                                forwarder.isEnabled = true
-                            } else {
-                                showKeyboardInfo = true
-                            }
-                        }
-                    }
                 }
             }
         }
