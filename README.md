@@ -26,6 +26,10 @@ More screenshots: [BASIC Prompt](screenshots/C64%20Ultimate%20Toolbox%20Screensh
 - A Commodore 64 Ultimate device on the local network
 - Toolbox Mode requires firmware 3.11+ with REST API enabled
 
+## Download
+- [Download C64 Ultimate Toolbox for macOS 14.6 and later](https://amiantos.s3.amazonaws.com/c64-ultimate-toolbox-v1.0.zip)
+- Or, [Purchase C64 Ultimate Toolbox on the App Store](https://apps.apple.com/us/app/c64-ultimate-toolbox/id6760209871?mt=12) for automatic updates.
+
 ## Building
 
 Open `C64 Ultimate Toolbox.xcodeproj` in Xcode and build. No package dependencies to resolve.
