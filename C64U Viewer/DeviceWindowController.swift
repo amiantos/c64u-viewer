@@ -193,8 +193,14 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
         case .basicSpecialCodes:
             return makeToolbarItem(itemIdentifier, label: "Special Codes", icon: "character.bubble", action: #selector(basicToggleSpecialCodes))
         case .basicFileMenu:
-            let item = makeToolbarItem(itemIdentifier, label: "File", icon: "doc", action: #selector(basicShowFileMenu(_:)))
-            // Attach a menu for the file operations
+            let item = NSMenuToolbarItem(itemIdentifier: itemIdentifier)
+            item.label = "File"
+            item.toolTip = "File"
+            if let image = NSImage(systemSymbolName: "doc", accessibilityDescription: "File") {
+                item.image = image
+            }
+            item.showsIndicator = true
+
             let menu = NSMenu()
             let samplesItem = NSMenuItem(title: "Samples", action: nil, keyEquivalent: "")
             let samplesMenu = NSMenu()
@@ -213,8 +219,7 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
             let saveItem = NSMenuItem(title: "Save As…", action: #selector(basicSaveFile), keyEquivalent: "")
             saveItem.target = self
             menu.addItem(saveItem)
-            item.menuFormRepresentation = NSMenuItem() // allows menu in overflow
-            // Use NSMenuToolbarItem for proper menu behavior
+            item.menu = menu
             return item
         case .basicRun:
             return makeToolbarItem(itemIdentifier, label: "Run", icon: "play.fill", action: #selector(basicUploadAndRun))

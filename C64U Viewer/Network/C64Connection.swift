@@ -82,6 +82,7 @@ final class C64Connection {
         }
         // Load settings from preset manager
         crtSettings = presetManager.settings(for: presetManager.selectedIdentifier)
+        renderer.crtSettings = crtSettings
 
         mediaCapture.renderer = renderer
         mediaCapture.audioPlayer = audioPlayer

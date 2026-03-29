@@ -7,6 +7,10 @@ import AppKit
 final class CRTSettingsViewController: NSViewController {
     let connection: C64Connection
     private var sliders: [String: NSSlider] = [:]
+    private var presetPopup: NSPopUpButton!
+    private var saveAsButton: NSButton!
+    private var resetButton: NSButton!
+    private var deleteButton: NSButton!
 
     init(connection: C64Connection) {
         self.connection = connection
@@ -38,20 +42,40 @@ final class CRTSettingsViewController: NSViewController {
 
         // Preset picker
         addSection("Preset", to: stack)
-        let presetPopup = NSPopUpButton(frame: .zero, pullsDown: false)
-        for preset in CRTPreset.allCases {
-            presetPopup.addItem(withTitle: preset.rawValue)
-        }
-        if case .builtIn(let p) = connection.presetManager.selectedIdentifier,
-           let idx = CRTPreset.allCases.firstIndex(of: p) {
-            presetPopup.selectItem(at: idx)
-        }
+        presetPopup = NSPopUpButton(frame: .zero, pullsDown: false)
+        rebuildPresetPopup()
         presetPopup.target = self
         presetPopup.action = #selector(presetChanged(_:))
         presetPopup.translatesAutoresizingMaskIntoConstraints = false
         stack.addArrangedSubview(presetPopup)
 
+        // Preset management buttons
+        let presetButtons = NSStackView()
+        presetButtons.orientation = .horizontal
+        presetButtons.spacing = 6
+        presetButtons.translatesAutoresizingMaskIntoConstraints = false
+
+        saveAsButton = NSButton(title: "Save As…", target: self, action: #selector(saveAsPreset))
+        saveAsButton.controlSize = .small
+        saveAsButton.bezelStyle = .rounded
+        presetButtons.addArrangedSubview(saveAsButton)
+
+        resetButton = NSButton(title: "Reset", target: self, action: #selector(resetPreset))
+        resetButton.controlSize = .small
+        resetButton.bezelStyle = .rounded
+        presetButtons.addArrangedSubview(resetButton)
+
+        deleteButton = NSButton(title: "Delete", target: self, action: #selector(deletePreset))
+        deleteButton.controlSize = .small
+        deleteButton.bezelStyle = .rounded
+        presetButtons.addArrangedSubview(deleteButton)
+
+        stack.addArrangedSubview(presetButtons)
+        updatePresetButtons()
+
         addSeparator(to: stack)
+
+        // Scanlines
         addSection("Scanlines", to: stack)
         addSlider("scanlineIntensity", label: "Intensity", range: 0...1, to: stack)
         addSlider("scanlineWidth", label: "Width", range: 0...1, to: stack)
@@ -123,6 +147,36 @@ final class CRTSettingsViewController: NSViewController {
         self.view = container
     }
 
+    // MARK: - Preset Popup
+
+    private func rebuildPresetPopup() {
+        presetPopup.removeAllItems()
+        let entries = connection.presetManager.allPresetEntries
+        for entry in entries {
+            presetPopup.addItem(withTitle: entry.name)
+        }
+        // Select current
+        let entries2 = connection.presetManager.allPresetEntries
+        if let idx = entries2.firstIndex(where: { $0.id == connection.presetManager.selectedIdentifier }) {
+            presetPopup.selectItem(at: idx)
+        }
+    }
+
+    private func updatePresetButtons() {
+        let selected = connection.presetManager.selectedIdentifier
+        // Save As is always visible
+        saveAsButton.isHidden = false
+        switch selected {
+        case .builtIn(let preset):
+            // Reset only visible when a built-in preset has been modified
+            resetButton.isHidden = !connection.presetManager.isModified(preset)
+            deleteButton.isHidden = true
+        case .custom:
+            resetButton.isHidden = true
+            deleteButton.isHidden = false
+        }
+    }
+
     // MARK: - Helpers
 
     private func addSection(_ title: String, to stack: NSStackView) {
@@ -186,20 +240,62 @@ final class CRTSettingsViewController: NSViewController {
     // MARK: - Actions
 
     @objc private func presetChanged(_ sender: NSPopUpButton) {
+        let entries = connection.presetManager.allPresetEntries
         let index = sender.indexOfSelectedItem
-        guard index >= 0, index < CRTPreset.allCases.count else { return }
-        connection.selectPreset(.builtIn(CRTPreset.allCases[index]))
+        guard index >= 0, index < entries.count else { return }
+        connection.selectPreset(entries[index].id)
         refreshSliders()
+        updatePresetButtons()
+    }
+
+    @objc private func saveAsPreset() {
+        let alert = NSAlert()
+        alert.messageText = "Save As New Preset"
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+        let nameField = NSTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
+        nameField.placeholderString = "Preset Name"
+        alert.accessoryView = nameField
+        guard let window = view.window else { return }
+        alert.beginSheetModal(for: window) { [weak self] response in
+            guard let self, response == .alertFirstButtonReturn else { return }
+            let name = nameField.stringValue.trimmingCharacters(in: .whitespaces)
+            guard !name.isEmpty else { return }
+            let id = self.connection.presetManager.saveAsCustom(name: name, settings: self.connection.crtSettings)
+            self.connection.presetManager.selectedIdentifier = .custom(id)
+            self.rebuildPresetPopup()
+            self.updatePresetButtons()
+        }
+    }
+
+    @objc private func resetPreset() {
+        guard case .builtIn(let preset) = connection.presetManager.selectedIdentifier else { return }
+        connection.presetManager.resetBuiltIn(preset)
+        connection.selectPreset(.builtIn(preset))
+        refreshSliders()
+        rebuildPresetPopup()
+        updatePresetButtons()
+    }
+
+    @objc private func deletePreset() {
+        guard case .custom(let id) = connection.presetManager.selectedIdentifier else { return }
+        connection.presetManager.deleteCustom(id: id)
+        connection.crtSettings = connection.presetManager.settings(for: connection.presetManager.selectedIdentifier)
+        refreshSliders()
+        rebuildPresetPopup()
+        updatePresetButtons()
     }
 
     @objc private func tintModeChanged(_ sender: NSPopUpButton) {
         connection.crtSettings.tintMode = sender.indexOfSelectedItem
         connection.applySettingsChange()
+        refreshPresetState()
     }
 
     @objc private func maskTypeChanged(_ sender: NSPopUpButton) {
         connection.crtSettings.maskType = sender.indexOfSelectedItem
         connection.applySettingsChange()
+        refreshPresetState()
     }
 
     @objc private func sliderChanged(_ sender: NSSlider) {
@@ -220,6 +316,12 @@ final class CRTSettingsViewController: NSViewController {
         default: break
         }
         connection.applySettingsChange()
+        refreshPresetState()
+    }
+
+    private func refreshPresetState() {
+        rebuildPresetPopup()
+        updatePresetButtons()
     }
 
     private func refreshSliders() {
@@ -229,7 +331,7 @@ final class CRTSettingsViewController: NSViewController {
     }
 }
 
-// MARK: - Flipped View (for scroll view document)
+// MARK: - Flipped View
 
 private final class FlippedView: NSView {
     override var isFlipped: Bool { true }

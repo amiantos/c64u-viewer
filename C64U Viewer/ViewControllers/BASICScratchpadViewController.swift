@@ -11,6 +11,10 @@ final class BASICScratchpadViewController: NSViewController {
 
     private var errorLabel: NSTextField!
     private var lineCountLabel: NSTextField!
+    private var specialCodesView: NSView?
+    private var specialCodesBottomConstraint: NSLayoutConstraint?
+    private var statusBarToEditorConstraint: NSLayoutConstraint?
+    private var statusBarToCodesConstraint: NSLayoutConstraint?
     private var isUploading = false
 
     init(connection: C64Connection) {
@@ -50,11 +54,13 @@ final class BASICScratchpadViewController: NSViewController {
         container.addSubview(scrollView)
         container.addSubview(statusBar)
 
+        statusBarToEditorConstraint = scrollView.bottomAnchor.constraint(equalTo: statusBar.topAnchor)
+
         NSLayoutConstraint.activate([
             scrollView.topAnchor.constraint(equalTo: container.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: statusBar.topAnchor),
+            statusBarToEditorConstraint!,
 
             statusBar.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             statusBar.trailingAnchor.constraint(equalTo: container.trailingAnchor),
@@ -132,7 +138,78 @@ final class BASICScratchpadViewController: NSViewController {
     }
 
     @objc func toggleSpecialCodes() {
-        // TODO: Show/hide special codes reference panel
+        if let existing = specialCodesView {
+            existing.removeFromSuperview()
+            specialCodesView = nil
+            // Reconnect editor to status bar
+            statusBarToCodesConstraint?.isActive = false
+            statusBarToEditorConstraint?.isActive = true
+        } else {
+            let codesView = createSpecialCodesView()
+            codesView.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(codesView)
+
+            // Find the status bar and editor scroll view
+            guard let statusBar = view.subviews.first(where: { $0 is NSStackView && $0 !== codesView }),
+                  let scrollView = view.subviews.first(where: { $0 is NSScrollView }) else { return }
+
+            // Disconnect editor from status bar, insert codes view between them
+            statusBarToEditorConstraint?.isActive = false
+
+            let codesToStatus = statusBar.topAnchor.constraint(equalTo: codesView.bottomAnchor)
+            let editorToCodes = codesView.topAnchor.constraint(equalTo: scrollView.bottomAnchor)
+            statusBarToCodesConstraint = codesToStatus
+
+            NSLayoutConstraint.activate([
+                editorToCodes,
+                codesView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                codesView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+                codesView.heightAnchor.constraint(equalToConstant: 100),
+                codesToStatus,
+            ])
+
+            specialCodesView = codesView
+        }
+    }
+
+    private func createSpecialCodesView() -> NSView {
+        let container = NSView()
+        container.wantsLayer = true
+        container.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.3).cgColor
+
+        let scrollView = NSScrollView()
+        scrollView.hasVerticalScroller = true
+        scrollView.drawsBackground = false
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+
+        let textView = NSTextView()
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.backgroundColor = .clear
+        textView.textContainerInset = NSSize(width: 8, height: 4)
+        textView.font = .monospacedSystemFont(ofSize: 10, weight: .regular)
+
+        let codes = BASICTokenizer.specialCodes.map { $0.0 }
+        let columns = 4
+        var lines: [String] = []
+        for row in stride(from: 0, to: codes.count, by: columns) {
+            let slice = codes[row..<min(row + columns, codes.count)]
+            lines.append(slice.map { $0.padding(toLength: 14, withPad: " ", startingAt: 0) }.joined())
+        }
+        textView.string = lines.joined(separator: "\n")
+        textView.textColor = .systemPink
+
+        scrollView.documentView = textView
+
+        container.addSubview(scrollView)
+        NSLayoutConstraint.activate([
+            scrollView.topAnchor.constraint(equalTo: container.topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+        ])
+
+        return container
     }
 
     func showFileMenu(from sender: Any?) {

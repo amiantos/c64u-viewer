@@ -30,7 +30,7 @@ final class OpenDeviceWindowController: NSWindowController {
 
     init() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 420, height: 340),
+            contentRect: NSRect(x: 0, y: 0, width: 420, height: 420),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
@@ -98,13 +98,33 @@ final class OpenDeviceWindowController: NSWindowController {
         connectToolboxButton.target = self
         connectToolboxButton.action = #selector(connectToolbox)
 
-        let stack = NSStackView(views: [
+        var views: [NSView] = [
             ipLabel, ipField,
             passwordLabel, passwordField,
             savePasswordCheckbox,
             toolboxErrorLabel,
             connectToolboxButton,
-        ])
+        ]
+
+        // Recent connections
+        if !recentConnections.toolboxSessions.isEmpty {
+            let recentLabel = NSTextField(labelWithString: "Recent:")
+            recentLabel.font = .systemFont(ofSize: 11, weight: .semibold)
+            recentLabel.translatesAutoresizingMaskIntoConstraints = false
+            views.append(recentLabel)
+
+            for session in recentConnections.toolboxSessions {
+                let title = session.savePassword ? "\(session.ipAddress) 🔑" : session.ipAddress
+                let button = NSButton(title: title, target: self, action: #selector(connectRecentToolbox(_:)))
+                button.bezelStyle = .inline
+                button.controlSize = .small
+                button.tag = recentConnections.toolboxSessions.firstIndex(of: session) ?? 0
+                button.translatesAutoresizingMaskIntoConstraints = false
+                views.append(button)
+            }
+        }
+
+        let stack = NSStackView(views: views)
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 8
@@ -146,11 +166,30 @@ final class OpenDeviceWindowController: NSWindowController {
         listenButton.target = self
         listenButton.action = #selector(startListening)
 
-        let stack = NSStackView(views: [
+        var views: [NSView] = [
             videoLabel, videoPortField,
             audioLabel, audioPortField,
             listenButton,
-        ])
+        ]
+
+        // Recent connections
+        if !recentConnections.viewerSessions.isEmpty {
+            let recentLabel = NSTextField(labelWithString: "Recent:")
+            recentLabel.font = .systemFont(ofSize: 11, weight: .semibold)
+            recentLabel.translatesAutoresizingMaskIntoConstraints = false
+            views.append(recentLabel)
+
+            for (index, session) in recentConnections.viewerSessions.enumerated() {
+                let button = NSButton(title: "Video: \(session.videoPort)  Audio: \(session.audioPort)", target: self, action: #selector(connectRecentViewer(_:)))
+                button.bezelStyle = .inline
+                button.controlSize = .small
+                button.tag = index
+                button.translatesAutoresizingMaskIntoConstraints = false
+                views.append(button)
+            }
+        }
+
+        let stack = NSStackView(views: views)
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 8
@@ -203,5 +242,31 @@ final class OpenDeviceWindowController: NSWindowController {
         let connection = C64Connection()
         connection.listen(videoPort: videoPort, audioPort: audioPort)
         delegate?.openDeviceWindowController(self, didConnectWith: connection)
+    }
+
+    @objc private func connectRecentToolbox(_ sender: NSButton) {
+        let index = sender.tag
+        guard index >= 0, index < recentConnections.toolboxSessions.count else { return }
+        let session = recentConnections.toolboxSessions[index]
+
+        ipField.stringValue = session.ipAddress
+        if let password = session.password {
+            passwordField.stringValue = password
+            savePasswordCheckbox.state = .on
+        } else {
+            passwordField.stringValue = ""
+            savePasswordCheckbox.state = .off
+        }
+        connectToolbox()
+    }
+
+    @objc private func connectRecentViewer(_ sender: NSButton) {
+        let index = sender.tag
+        guard index >= 0, index < recentConnections.viewerSessions.count else { return }
+        let session = recentConnections.viewerSessions[index]
+
+        videoPortField.stringValue = "\(session.videoPort)"
+        audioPortField.stringValue = "\(session.audioPort)"
+        startListening()
     }
 }

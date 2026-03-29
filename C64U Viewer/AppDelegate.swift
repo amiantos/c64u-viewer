@@ -65,6 +65,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, DeviceWindowController
         captureMenuItem.submenu = captureMenu
         mainMenu.addItem(captureMenuItem)
 
+        // Preset menu (dynamic — populated by the key window's DeviceWindowController)
+        let presetMenuItem = NSMenuItem()
+        let presetMenu = NSMenu(title: "Preset")
+        presetMenu.delegate = self
+        presetMenuItem.submenu = presetMenu
+        mainMenu.addItem(presetMenuItem)
+
         // Window menu
         let windowMenuItem = NSMenuItem()
         let windowMenu = NSMenu(title: "Window")
@@ -109,5 +116,54 @@ final class AppDelegate: NSObject, NSApplicationDelegate, DeviceWindowController
 extension AppDelegate: OpenDeviceWindowControllerDelegate {
     func openDeviceWindowController(_ controller: OpenDeviceWindowController, didConnectWith connection: C64Connection) {
         openDeviceWindow(connection: connection)
+    }
+}
+
+// MARK: - Preset Menu (NSMenuDelegate)
+
+extension AppDelegate: NSMenuDelegate {
+    private var activeDeviceController: DeviceWindowController? {
+        deviceWindowControllers.first { $0.window?.isKeyWindow == true }
+    }
+
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        guard menu.title == "Preset" else { return }
+        menu.removeAllItems()
+
+        guard let controller = activeDeviceController else {
+            let item = NSMenuItem(title: "No Device Connected", action: nil, keyEquivalent: "")
+            item.isEnabled = false
+            menu.addItem(item)
+            return
+        }
+
+        let connection = controller.connection
+        let entries = connection.presetManager.allPresetEntries
+        let selected = connection.presetManager.selectedIdentifier
+
+        for entry in entries {
+            let item = NSMenuItem(title: entry.name, action: #selector(presetMenuItemSelected(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = PresetMenuEntry(id: entry.id, controller: controller)
+            if entry.id == selected {
+                item.state = .on
+            }
+            menu.addItem(item)
+        }
+    }
+
+    @objc private func presetMenuItemSelected(_ sender: NSMenuItem) {
+        guard let entry = sender.representedObject as? PresetMenuEntry else { return }
+        entry.controller.connection.selectPreset(entry.id)
+    }
+}
+
+private class PresetMenuEntry: NSObject {
+    let id: PresetIdentifier
+    let controller: DeviceWindowController
+
+    init(id: PresetIdentifier, controller: DeviceWindowController) {
+        self.id = id
+        self.controller = controller
     }
 }
