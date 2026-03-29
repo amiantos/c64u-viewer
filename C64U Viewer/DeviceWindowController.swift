@@ -357,8 +357,8 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
     }
 
     @objc private func closeInspector() {
-        sidebarDidSelectItem(.dataStreams)
-        sidebarVC?.selectItem(.dataStreams)
+        closeCurrentInspector()
+        sidebarVC?.deselectAll()
     }
 
     private var sidebarVC: SidebarViewController? {
@@ -437,6 +437,15 @@ extension DeviceWindowController: NSWindowDelegate {
 // MARK: - SidebarViewControllerDelegate
 
 extension DeviceWindowController: SidebarViewControllerDelegate {
+    func closeCurrentInspector() {
+        connection.selectedSidebarItem = nil
+        if let existing = inspectorItem {
+            splitViewController.removeSplitViewItem(existing)
+            inspectorItem = nil
+        }
+        rebuildToolbar()
+    }
+
     func sidebarDidSelectItem(_ item: SidebarItem) {
         connection.selectedSidebarItem = item
 
@@ -447,7 +456,7 @@ extension DeviceWindowController: SidebarViewControllerDelegate {
         }
 
         // Add inspector for items that need one
-        if item.hasInspector {
+        if item.hasInspector && item.isImplemented {
             let viewController: NSViewController
             switch item {
             case .crtSettings:
@@ -456,8 +465,8 @@ extension DeviceWindowController: SidebarViewControllerDelegate {
                 viewController = AudioSettingsViewController(connection: connection)
             case .basicScratchpad:
                 viewController = BASICScratchpadViewController(connection: connection)
-            case .dataStreams:
-                fatalError() // dataStreams has no inspector
+            default:
+                return // not yet implemented or no inspector
             }
 
             let splitItem = NSSplitViewItem(inspectorWithViewController: viewController)

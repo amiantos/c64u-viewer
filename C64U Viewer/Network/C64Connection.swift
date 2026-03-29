@@ -39,7 +39,7 @@ final class C64Connection {
     var isMuted = false
 
     // Tool panel state
-    var selectedSidebarItem: SidebarItem = .dataStreams
+    var selectedSidebarItem: SidebarItem? = nil
     var basicScratchpadCode: String = BASICSamples.helloWorld
 
     private(set) var framesPerSecond: Double = 0
@@ -199,7 +199,7 @@ final class C64Connection {
         connectionError = nil
         streamsActive = false
         isWaitingForReboot = false
-        selectedSidebarItem = .dataStreams
+        selectedSidebarItem = nil
         fpsTimer?.cancel()
         fpsTimer = nil
         framesPerSecond = 0

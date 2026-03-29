@@ -3,33 +3,74 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 enum SidebarItem: String, CaseIterable, Identifiable {
-    case dataStreams
+    // Settings
     case crtSettings
     case audioSettings
+
+    // Tools
     case basicScratchpad
+    case fileManager
+    case driveManagement
+    case diskFlipList
+    case configurationManager
+
+    // Developer
+    case memoryBrowser
+    case debugStreamViewer
 
     var id: String { rawValue }
 
     var label: String {
         switch self {
-        case .dataStreams: "Data Streams"
         case .crtSettings: "CRT Filter"
         case .audioSettings: "Audio"
         case .basicScratchpad: "BASIC Scratchpad"
+        case .fileManager: "File Manager"
+        case .driveManagement: "Drive Management"
+        case .diskFlipList: "Disk Flip List"
+        case .configurationManager: "Configuration"
+        case .memoryBrowser: "Memory Browser"
+        case .debugStreamViewer: "Debug Stream"
         }
     }
 
     var icon: String {
         switch self {
-        case .dataStreams: "play.display"
         case .crtSettings: "tv"
         case .audioSettings: "speaker.wave.2.fill"
         case .basicScratchpad: "chevron.left.forwardslash.chevron.right"
+        case .fileManager: "folder"
+        case .driveManagement: "externaldrive"
+        case .diskFlipList: "square.stack"
+        case .configurationManager: "gearshape"
+        case .memoryBrowser: "memorychip"
+        case .debugStreamViewer: "ladybug"
         }
     }
 
-    /// Whether this item opens an inspector panel
+    var isImplemented: Bool {
+        switch self {
+        case .crtSettings, .audioSettings, .basicScratchpad:
+            return true
+        default:
+            return false
+        }
+    }
+
     var hasInspector: Bool {
-        self != .dataStreams
+        true
     }
 }
+
+// MARK: - Sidebar Sections
+
+struct SidebarSection {
+    let title: String?
+    let items: [SidebarItem]
+}
+
+let sidebarSections: [SidebarSection] = [
+    SidebarSection(title: "Tools", items: [.basicScratchpad, .fileManager, .driveManagement, .diskFlipList, .configurationManager]),
+    SidebarSection(title: "Developer", items: [.memoryBrowser, .debugStreamViewer]),
+    SidebarSection(title: "Settings", items: [.crtSettings, .audioSettings]),
+]

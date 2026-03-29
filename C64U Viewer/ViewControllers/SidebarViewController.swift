@@ -8,12 +8,12 @@ protocol SidebarViewControllerDelegate: AnyObject {
     func sidebarDidSelectItem(_ item: SidebarItem)
 }
 
-final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTableViewDelegate {
+final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NSOutlineViewDelegate {
     weak var delegate: SidebarViewControllerDelegate?
     let connection: C64Connection
 
-    private let tableView = NSTableView()
-    private let items = SidebarItem.allCases
+    private let outlineView = NSOutlineView()
+    private let sections = sidebarSections
 
     init(connection: C64Connection) {
         self.connection = connection
@@ -30,46 +30,131 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
 
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("item"))
         column.title = ""
-        tableView.addTableColumn(column)
-        tableView.headerView = nil
-        tableView.dataSource = self
-        tableView.delegate = self
-        tableView.style = .sourceList
-        tableView.rowHeight = 28
+        outlineView.addTableColumn(column)
+        outlineView.outlineTableColumn = column
+        outlineView.headerView = nil
+        outlineView.dataSource = self
+        outlineView.delegate = self
+        outlineView.style = .sourceList
+        outlineView.rowHeight = 26
+        outlineView.indentationPerLevel = 0
 
-        scrollView.documentView = tableView
+        scrollView.documentView = outlineView
 
         self.view = scrollView
         self.title = "Tools"
 
-        // Select Data Streams by default
-        tableView.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
+        // Expand all sections
+        for section in sections {
+            if let title = section.title {
+                outlineView.expandItem(title)
+            }
+        }
+
     }
 
     func selectItem(_ item: SidebarItem) {
-        if let idx = items.firstIndex(of: item) {
-            tableView.selectRowIndexes(IndexSet(integer: idx), byExtendingSelection: false)
+        let row = outlineView.row(forItem: item.rawValue)
+        if row >= 0 {
+            outlineView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
         }
     }
 
-    // MARK: - NSTableViewDataSource
-
-    func numberOfRows(in tableView: NSTableView) -> Int {
-        items.count
+    func deselectAll() {
+        outlineView.deselectAll(nil)
     }
 
-    // MARK: - NSTableViewDelegate
+    // MARK: - NSOutlineViewDataSource
 
-    func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
-        let item = items[row]
+    func outlineView(_ outlineView: NSOutlineView, numberOfChildrenOfItem item: Any?) -> Int {
+        if item == nil {
+            // Root level: sections
+            return sections.count
+        }
+        if let sectionKey = item as? String, let section = section(for: sectionKey) {
+            return section.items.count
+        }
+        return 0
+    }
 
-        let cellIdentifier = NSUserInterfaceItemIdentifier("SidebarCell")
+    func outlineView(_ outlineView: NSOutlineView, child index: Int, ofItem item: Any?) -> Any {
+        if item == nil {
+            // Return section title as key
+            return sections[index].title ?? ""
+        }
+        if let sectionKey = item as? String, let section = section(for: sectionKey) {
+            return section.items[index].rawValue
+        }
+        return ""
+    }
+
+    func outlineView(_ outlineView: NSOutlineView, isItemExpandable item: Any) -> Bool {
+        // Section headers are expandable (they have children)
+        if let key = item as? String {
+            return section(for: key) != nil
+        }
+        return false
+    }
+
+    // MARK: - NSOutlineViewDelegate
+
+    func outlineView(_ outlineView: NSOutlineView, isGroupItem item: Any) -> Bool {
+        // Section headers are group items
+        if let key = item as? String {
+            return section(for: key) != nil
+        }
+        return false
+    }
+
+    func outlineView(_ outlineView: NSOutlineView, shouldShowOutlineCellForItem item: Any) -> Bool {
+        false // No disclosure triangles
+    }
+
+    func outlineView(_ outlineView: NSOutlineView, shouldSelectItem item: Any) -> Bool {
+        // Only allow selecting leaf items (SidebarItem rawValues), not section headers
+        guard let rawValue = item as? String, let sidebarItem = SidebarItem(rawValue: rawValue) else {
+            return false
+        }
+        return sidebarItem.isImplemented
+    }
+
+    func outlineView(_ outlineView: NSOutlineView, viewFor tableColumn: NSTableColumn?, item: Any) -> NSView? {
+        guard let key = item as? String else { return nil }
+
+        // Check if it's a section header
+        if let section = section(for: key), let title = section.title {
+            let cellID = NSUserInterfaceItemIdentifier("SectionHeader")
+            let cell: NSTableCellView
+            if let existing = outlineView.makeView(withIdentifier: cellID, owner: nil) as? NSTableCellView {
+                cell = existing
+            } else {
+                cell = NSTableCellView()
+                cell.identifier = cellID
+                let textField = NSTextField(labelWithString: "")
+                textField.translatesAutoresizingMaskIntoConstraints = false
+                textField.font = .systemFont(ofSize: 11, weight: .semibold)
+                textField.textColor = .secondaryLabelColor
+                cell.addSubview(textField)
+                cell.textField = textField
+                NSLayoutConstraint.activate([
+                    textField.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 4),
+                    textField.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
+                ])
+            }
+            cell.textField?.stringValue = title.uppercased()
+            return cell
+        }
+
+        // Sidebar item
+        guard let sidebarItem = SidebarItem(rawValue: key) else { return nil }
+
+        let cellID = NSUserInterfaceItemIdentifier("SidebarCell")
         let cell: NSTableCellView
-        if let existing = tableView.makeView(withIdentifier: cellIdentifier, owner: nil) as? NSTableCellView {
+        if let existing = outlineView.makeView(withIdentifier: cellID, owner: nil) as? NSTableCellView {
             cell = existing
         } else {
             cell = NSTableCellView()
-            cell.identifier = cellIdentifier
+            cell.identifier = cellID
 
             let imageView = NSImageView()
             imageView.translatesAutoresizingMaskIntoConstraints = false
@@ -92,16 +177,27 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
             ])
         }
 
-        cell.textField?.stringValue = item.label
-        cell.imageView?.image = NSImage(systemSymbolName: item.icon, accessibilityDescription: item.label)
+        cell.textField?.stringValue = sidebarItem.label
+        cell.imageView?.image = NSImage(systemSymbolName: sidebarItem.icon, accessibilityDescription: sidebarItem.label)
+
+        // Gray out unimplemented items
+        let alpha: CGFloat = sidebarItem.isImplemented ? 1.0 : 0.4
+        cell.textField?.alphaValue = alpha
+        cell.imageView?.alphaValue = alpha
 
         return cell
     }
 
-    func tableViewSelectionDidChange(_ notification: Notification) {
-        let row = tableView.selectedRow
-        if row >= 0 && row < items.count {
-            delegate?.sidebarDidSelectItem(items[row])
-        }
+    func outlineViewSelectionDidChange(_ notification: Notification) {
+        let row = outlineView.selectedRow
+        guard row >= 0, let rawValue = outlineView.item(atRow: row) as? String,
+              let item = SidebarItem(rawValue: rawValue) else { return }
+        delegate?.sidebarDidSelectItem(item)
+    }
+
+    // MARK: - Helpers
+
+    private func section(for key: String) -> SidebarSection? {
+        sections.first { $0.title == key }
     }
 }
