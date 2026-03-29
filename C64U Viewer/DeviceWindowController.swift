@@ -21,14 +21,14 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
     init(connection: C64Connection) {
         self.connection = connection
 
+        let defaultSize = NSRect(x: 0, y: 0, width: 1200, height: 750)
         let window = DeviceWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 900, height: 600),
+            contentRect: defaultSize,
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
-        window.minSize = NSSize(width: 600, height: 400)
-        window.center()
+        window.minSize = NSSize(width: 700, height: 450)
         window.isReleasedWhenClosed = false
         window.titlebarAppearsTransparent = false
         window.toolbarStyle = .unified
@@ -49,6 +49,21 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
 
         window.contentViewController = splitViewController
         window.delegate = self
+
+        // Frame autosave — must use NSWindowController's method, not NSWindow's
+        let autosaveKey: String
+        if let client = connection.apiClient {
+            autosaveKey = "DeviceWindow-\(client.baseURL)"
+        } else {
+            autosaveKey = "DeviceWindow-Viewer-\(connection.videoPort)-\(connection.audioPort)"
+        }
+
+        if !window.setFrameUsingName(autosaveKey) {
+            window.setContentSize(NSSize(width: 1200, height: 750))
+            window.center()
+        }
+
+        self.windowFrameAutosaveName = autosaveKey
 
         videoViewController.onMenuButton = { [weak self] in
             self?.menuTapped()
@@ -191,7 +206,8 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
         case .menuButton:
             return makeToolbarItem(itemIdentifier, label: "Menu", icon: "line.3.horizontal", action: #selector(menuTapped))
         case .basicSpecialCodes:
-            return makeToolbarItem(itemIdentifier, label: "Special Codes", icon: "character.bubble", action: #selector(basicToggleSpecialCodes))
+            let isOn = basicScratchpadVC?.isSpecialCodesVisible == true
+            return makeToolbarItem(itemIdentifier, label: "Special Codes", icon: isOn ? "character.bubble.fill" : "character.bubble", action: #selector(basicToggleSpecialCodes))
         case .basicFileMenu:
             let item = NSMenuToolbarItem(itemIdentifier: itemIdentifier)
             item.label = "File"
@@ -332,6 +348,7 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
 
     @objc private func basicToggleSpecialCodes() {
         basicScratchpadVC?.toggleSpecialCodes()
+        refreshToolbarItem(.basicSpecialCodes)
     }
 
     @objc private func basicShowFileMenu(_ sender: Any?) {

@@ -7,6 +7,7 @@ import Network
 
 final class UDPVideoReceiver: @unchecked Sendable {
     private var listener: NWListener?
+    private var activeConnection: NWConnection?
     private let queue = DispatchQueue(label: "com.c64uviewer.video-udp", qos: .userInteractive)
     private let frameAssembler: FrameAssembler
     private var timeoutTimer: DispatchSourceTimer?
@@ -53,11 +54,16 @@ final class UDPVideoReceiver: @unchecked Sendable {
     func stop() {
         timeoutTimer?.cancel()
         timeoutTimer = nil
+        activeConnection?.cancel()
+        activeConnection = nil
         listener?.cancel()
         listener = nil
     }
 
     private func handleConnection(_ connection: NWConnection) {
+        // Cancel any previous connection
+        activeConnection?.cancel()
+        activeConnection = connection
         connection.start(queue: queue)
         receivePacket(on: connection)
     }

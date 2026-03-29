@@ -11,6 +11,7 @@ final class UDPAudioReceiver: @unchecked Sendable {
     static let samplesPerPacket = 192 // stereo samples (each = 2 channels × 2 bytes = 4 bytes)
 
     private var listener: NWListener?
+    private var activeConnection: NWConnection?
     private let queue = DispatchQueue(label: "com.c64uviewer.audio-udp", qos: .userInteractive)
 
     var onAudioData: ((_ pcmData: Data, _ sequenceNum: UInt16) -> Void)?
@@ -49,11 +50,15 @@ final class UDPAudioReceiver: @unchecked Sendable {
     }
 
     func stop() {
+        activeConnection?.cancel()
+        activeConnection = nil
         listener?.cancel()
         listener = nil
     }
 
     private func handleConnection(_ connection: NWConnection) {
+        activeConnection?.cancel()
+        activeConnection = connection
         connection.start(queue: queue)
         receivePacket(on: connection)
     }

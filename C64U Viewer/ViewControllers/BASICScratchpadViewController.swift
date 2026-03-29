@@ -11,7 +11,8 @@ final class BASICScratchpadViewController: NSViewController {
 
     private var errorLabel: NSTextField!
     private var lineCountLabel: NSTextField!
-    private var specialCodesView: NSView?
+    private(set) var specialCodesView: NSView?
+    var isSpecialCodesVisible: Bool { specialCodesView != nil }
     private var specialCodesBottomConstraint: NSLayoutConstraint?
     private var statusBarToEditorConstraint: NSLayoutConstraint?
     private var statusBarToCodesConstraint: NSLayoutConstraint?
@@ -255,7 +256,7 @@ final class BASICScratchpadViewController: NSViewController {
                 let ptrData = Data([UInt8(endAddr & 0xFF), UInt8(endAddr >> 8)])
                 try await client.writeMem(address: 0x002D, data: ptrData)
 
-                // Auto-run
+                // Auto-run: R, U, N, RETURN
                 let runBytes: [UInt8] = [0x52, 0x55, 0x4E, 0x0D]
                 try await client.writeMem(address: 0x0277, data: Data(runBytes))
                 try await client.writeMem(address: 0x00C6, data: Data([UInt8(runBytes.count)]))

@@ -179,11 +179,12 @@ final class C64Connection {
             mediaCapture.stopRecording()
         }
 
-        // Stop streams via API in Toolbox Mode
+        // Stop streams via API in Toolbox Mode — capture client before nilling it
         if connectionMode == .toolbox, let client = apiClient {
+            let capturedClient = client
             Task {
-                try? await client.stopStream("video")
-                try? await client.stopStream("audio")
+                try? await capturedClient.stopStream("video")
+                try? await capturedClient.stopStream("audio")
             }
         }
 
