@@ -3,7 +3,6 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 import Foundation
-import Observation
 
 enum PresetIdentifier: Hashable, Codable {
     case builtIn(CRTPreset)
@@ -22,7 +21,6 @@ private struct PresetStore: Codable {
     var selectedIdentifier: PresetIdentifier = .builtIn(.clean)
 }
 
-@Observable
 final class PresetManager {
     private(set) var customPresets: [CustomPreset] = []
     private(set) var builtInOverrides: [String: CRTSettings] = [:]

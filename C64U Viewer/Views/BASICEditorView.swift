@@ -2,7 +2,6 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-import SwiftUI
 import AppKit
 
 // MARK: - Syntax Highlighting
@@ -75,7 +74,6 @@ struct BASICSyntaxHighlighter {
             }
 
             if inQuotes {
-                // Inside a string literal
                 let char = remaining[remaining.startIndex]
                 if char == "\"" {
                     result.append(styled("\"", color: stringColor))
@@ -83,7 +81,6 @@ struct BASICSyntaxHighlighter {
                     lowIdx = lowered.index(after: lowIdx)
                     inQuotes = false
                 } else if char == "{" {
-                    // Special code inside string
                     if let (match, len) = matchSpecialCode(lowered[lowIdx...]) {
                         let origText = String(remaining[remaining.startIndex..<remaining.index(remaining.startIndex, offsetBy: len)])
                         result.append(styled(origText, color: specialCodeColor))
@@ -91,7 +88,6 @@ struct BASICSyntaxHighlighter {
                         lowIdx = lowered.index(lowIdx, offsetBy: len)
                         _ = match
                     } else {
-                        // Unknown {code} — highlight as error
                         if let closeIdx = remaining[remaining.index(after: remaining.startIndex)...].firstIndex(of: "}") {
                             let endIdx = remaining.index(after: closeIdx)
                             result.append(styled(String(remaining[remaining.startIndex..<endIdx]), color: errorColor))
@@ -141,7 +137,6 @@ struct BASICSyntaxHighlighter {
             }
 
             if char.isNumber {
-                // Highlight number sequences
                 let numChars = remaining.prefix(while: { $0.isNumber || $0 == "." })
                 result.append(styled(String(numChars), color: numberColor))
                 let len = numChars.count
@@ -150,7 +145,6 @@ struct BASICSyntaxHighlighter {
                 continue
             }
 
-            // Default character
             result.append(styled(String(char), color: defaultColor))
             remaining = remaining[remaining.index(after: remaining.startIndex)...]
             lowIdx = lowered.index(after: lowIdx)
@@ -169,15 +163,12 @@ struct BASICSyntaxHighlighter {
     private static func matchKeyword(_ s: Substring) -> (String, UInt8)? {
         for (keyword, token) in BASICTokenizer.tokens where keyword.count > 1 {
             if s.hasPrefix(keyword) {
-                // Make sure it's not a prefix of a variable name (e.g., "top" shouldn't match "to")
                 let afterIdx = s.index(s.startIndex, offsetBy: keyword.count)
                 if afterIdx < s.endIndex {
                     let next = s[afterIdx]
-                    // If keyword ends with $ or ( it's unambiguous
                     if keyword.hasSuffix("$") || keyword.hasSuffix("(") {
                         return (keyword, token)
                     }
-                    // If next char is a letter, it's a variable name, not a keyword
                     if next.isLetter {
                         continue
                     }
@@ -198,31 +189,29 @@ struct BASICSyntaxHighlighter {
     }
 }
 
-// MARK: - NSTextView-backed Editor with Syntax Highlighting
+// MARK: - BASIC Editor NSTextView Helper
 
-struct BASICEditorView: NSViewRepresentable {
-    @Binding var text: String
+final class BASICEditorTextViewManager: NSObject, NSTextViewDelegate {
+    var onTextChange: ((String) -> Void)?
+    private(set) var textView: NSTextView!
+    private var isUpdating = false
 
-    func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text)
-    }
-
-    func makeNSView(context: Context) -> NSScrollView {
+    func createScrollView() -> NSScrollView {
         let scrollView = NSTextView.scrollableTextView()
-        let textView = scrollView.documentView as! NSTextView
+        let tv = scrollView.documentView as! NSTextView
 
-        textView.isRichText = false
-        textView.allowsUndo = true
-        textView.isAutomaticQuoteSubstitutionEnabled = false
-        textView.isAutomaticDashSubstitutionEnabled = false
-        textView.isAutomaticTextReplacementEnabled = false
-        textView.isAutomaticSpellingCorrectionEnabled = false
-        textView.isAutomaticTextCompletionEnabled = false
-        textView.font = BASICSyntaxHighlighter.defaultFont
-        textView.backgroundColor = NSColor(white: 0.1, alpha: 1.0)
-        textView.insertionPointColor = .white
-        textView.textContainerInset = NSSize(width: 8, height: 8)
-        textView.delegate = context.coordinator
+        tv.isRichText = false
+        tv.allowsUndo = true
+        tv.isAutomaticQuoteSubstitutionEnabled = false
+        tv.isAutomaticDashSubstitutionEnabled = false
+        tv.isAutomaticTextReplacementEnabled = false
+        tv.isAutomaticSpellingCorrectionEnabled = false
+        tv.isAutomaticTextCompletionEnabled = false
+        tv.font = BASICSyntaxHighlighter.defaultFont
+        tv.backgroundColor = NSColor(white: 0.1, alpha: 1.0)
+        tv.insertionPointColor = .white
+        tv.textContainerInset = NSSize(width: 8, height: 8)
+        tv.delegate = self
 
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = false
@@ -230,51 +219,36 @@ struct BASICEditorView: NSViewRepresentable {
         scrollView.backgroundColor = NSColor(white: 0.1, alpha: 1.0)
         scrollView.borderType = .noBorder
 
-        // Apply initial highlighting
-        context.coordinator.textView = textView
-        context.coordinator.applyHighlighting()
-
+        textView = tv
         return scrollView
     }
 
-    func updateNSView(_ scrollView: NSScrollView, context: Context) {
-        let textView = scrollView.documentView as! NSTextView
-        if textView.string != text {
-            let selectedRanges = textView.selectedRanges
-            context.coordinator.isUpdating = true
-            textView.string = text
-            context.coordinator.applyHighlighting()
-            textView.selectedRanges = selectedRanges
-            context.coordinator.isUpdating = false
-        }
+    func setText(_ text: String) {
+        guard let textView, textView.string != text else { return }
+        isUpdating = true
+        let selectedRanges = textView.selectedRanges
+        textView.string = text
+        applyHighlighting()
+        textView.selectedRanges = selectedRanges
+        isUpdating = false
     }
 
-    class Coordinator: NSObject, NSTextViewDelegate {
-        var text: Binding<String>
-        var textView: NSTextView?
-        var isUpdating = false
+    func textDidChange(_ notification: Notification) {
+        guard let textView = notification.object as? NSTextView, !isUpdating else { return }
+        onTextChange?(textView.string)
+        applyHighlighting()
+    }
 
-        init(text: Binding<String>) {
-            self.text = text
-        }
+    private func applyHighlighting() {
+        guard let textView else { return }
+        let highlighted = BASICSyntaxHighlighter.highlight(textView.string)
 
-        func textDidChange(_ notification: Notification) {
-            guard let textView = notification.object as? NSTextView, !isUpdating else { return }
-            text.wrappedValue = textView.string
-            applyHighlighting()
-        }
-
-        func applyHighlighting() {
-            guard let textView else { return }
-            let highlighted = BASICSyntaxHighlighter.highlight(textView.string)
-
-            isUpdating = true
-            let selectedRanges = textView.selectedRanges
-            textView.textStorage?.beginEditing()
-            textView.textStorage?.setAttributedString(highlighted)
-            textView.textStorage?.endEditing()
-            textView.selectedRanges = selectedRanges
-            isUpdating = false
-        }
+        isUpdating = true
+        let selectedRanges = textView.selectedRanges
+        textView.textStorage?.beginEditing()
+        textView.textStorage?.setAttributedString(highlighted)
+        textView.textStorage?.endEditing()
+        textView.selectedRanges = selectedRanges
+        isUpdating = false
     }
 }

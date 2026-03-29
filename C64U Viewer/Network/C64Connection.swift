@@ -3,9 +3,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 import Foundation
-import Observation
 
-@Observable
 final class C64Connection {
     var videoPort: UInt16 = 11000
     var audioPort: UInt16 = 11001
