@@ -164,7 +164,6 @@ final class BASICScratchpadViewController: NSViewController {
                 editorToCodes,
                 codesView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
                 codesView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-                codesView.heightAnchor.constraint(equalToConstant: 100),
                 codesToStatus,
             ])
 
@@ -173,43 +172,35 @@ final class BASICScratchpadViewController: NSViewController {
     }
 
     private func createSpecialCodesView() -> NSView {
-        let container = NSView()
-        container.wantsLayer = true
-        container.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.3).cgColor
+        let flowView = FlowLayoutView()
+        flowView.wantsLayer = true
+        flowView.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.3).cgColor
+        flowView.spacing = 4
+        flowView.padding = NSEdgeInsets(top: 6, left: 6, bottom: 6, right: 6)
 
-        let scrollView = NSScrollView()
-        scrollView.hasVerticalScroller = true
-        scrollView.drawsBackground = false
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-
-        let textView = NSTextView()
-        textView.isEditable = false
-        textView.isSelectable = true
-        textView.backgroundColor = .clear
-        textView.textContainerInset = NSSize(width: 8, height: 4)
-        textView.font = .monospacedSystemFont(ofSize: 10, weight: .regular)
-
-        let codes = BASICTokenizer.specialCodes.map { $0.0 }
-        let columns = 4
-        var lines: [String] = []
-        for row in stride(from: 0, to: codes.count, by: columns) {
-            let slice = codes[row..<min(row + columns, codes.count)]
-            lines.append(slice.map { $0.padding(toLength: 14, withPad: " ", startingAt: 0) }.joined())
+        for (code, _) in BASICTokenizer.specialCodes {
+            let button = NSButton(title: code, target: self, action: #selector(insertSpecialCode(_:)))
+            button.bezelStyle = .toolbar
+            button.controlSize = .small
+            button.font = .monospacedSystemFont(ofSize: 9, weight: .medium)
+            button.contentTintColor = .systemPink
+            button.identifier = NSUserInterfaceItemIdentifier(code)
+            flowView.addArrangedSubview(button)
         }
-        textView.string = lines.joined(separator: "\n")
-        textView.textColor = .systemPink
 
-        scrollView.documentView = textView
+        return flowView
+    }
 
-        container.addSubview(scrollView)
-        NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: container.topAnchor),
-            scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-        ])
+    @objc private func insertSpecialCode(_ sender: NSButton) {
+        guard let code = sender.identifier?.rawValue,
+              let textView = editorManager.textView else { return }
 
-        return container
+        let insertionPoint = textView.selectedRange().location
+        textView.insertText(code, replacementRange: textView.selectedRange())
+
+        // Update the connection's stored code
+        connection.basicScratchpadCode = textView.string
+        updateLineCount()
     }
 
     func showFileMenu(from sender: Any?) {
@@ -274,5 +265,63 @@ final class BASICScratchpadViewController: NSViewController {
             }
             isUploading = false
         }
+    }
+}
+
+private final class FlippedView: NSView {
+    override var isFlipped: Bool { true }
+}
+
+private final class FlowLayoutView: NSView {
+    var spacing: CGFloat = 4
+    var padding = NSEdgeInsets(top: 6, left: 6, bottom: 6, right: 6)
+    private var arrangedSubviews: [NSView] = []
+
+    override var isFlipped: Bool { true }
+
+    func addArrangedSubview(_ view: NSView) {
+        arrangedSubviews.append(view)
+        addSubview(view)
+    }
+
+    override func layout() {
+        super.layout()
+        layoutSubviewsFlow()
+    }
+
+    private func layoutSubviewsFlow() {
+        let availableWidth = bounds.width - padding.left - padding.right
+        guard availableWidth > 0 else { return }
+
+        var x = padding.left
+        var y = padding.top
+        var rowHeight: CGFloat = 0
+
+        for subview in arrangedSubviews {
+            let size = subview.fittingSize
+
+            if x + size.width > bounds.width - padding.right && x > padding.left {
+                // Wrap to next row
+                x = padding.left
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+
+            subview.frame = CGRect(x: x, y: y, width: size.width, height: size.height)
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
+
+        let totalHeight = y + rowHeight + padding.bottom
+        if abs(intrinsicHeight - totalHeight) > 1 {
+            intrinsicHeight = totalHeight
+            invalidateIntrinsicContentSize()
+        }
+    }
+
+    private var intrinsicHeight: CGFloat = 0
+
+    override var intrinsicContentSize: NSSize {
+        NSSize(width: NSView.noIntrinsicMetric, height: intrinsicHeight)
     }
 }
