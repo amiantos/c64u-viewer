@@ -5,70 +5,50 @@
 import SwiftUI
 internal import UniformTypeIdentifiers
 
-struct BASICScratchpadView: View {
+struct BASICScratchpadPanelView: View {
     @Bindable var connection: C64Connection
-    let onBack: () -> Void
-    let onDismiss: () -> Void
 
     @State private var errorMessage: String?
     @State private var isUploading = false
-    @State private var showSuccess = false
     @State private var showSpecialCodes = false
 
     var body: some View {
         VStack(spacing: 0) {
             header
-                .padding(.horizontal, 20)
-                .padding(.top, 20)
-                .padding(.bottom, 12)
+                .padding(.horizontal, 12)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
 
             BASICEditorView(text: $connection.basicScratchpadCode)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-                .padding(.horizontal, 20)
+                .padding(.horizontal, 12)
 
             if showSpecialCodes {
                 specialCodesReference
-                    .padding(.horizontal, 20)
-                    .padding(.top, 8)
+                    .padding(.horizontal, 12)
+                    .padding(.top, 6)
             }
 
             statusBar
-                .padding(.horizontal, 20)
-                .padding(.top, 8)
+                .padding(.horizontal, 12)
+                .padding(.top, 6)
 
             toolbar
-                .padding(20)
+                .padding(12)
         }
-        .frame(width: 600)
-        .frame(maxHeight: 700)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-        .shadow(radius: 20)
+        .background(Color(nsColor: .controlBackgroundColor))
     }
 
     // MARK: - Header
 
     private var header: some View {
         HStack {
-            Button { onBack() } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "chevron.left")
-                    Text("Back")
-                }
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.blue)
-
-            Spacer()
-
             Text("BASIC Scratchpad")
-                .font(.title3)
-                .fontWeight(.semibold)
-
+                .font(.headline)
             Spacer()
-
-            Button { onDismiss() } label: {
+            Button {
+                connection.activeToolPanel = nil
+            } label: {
                 Image(systemName: "xmark.circle.fill")
-                    .font(.title2)
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
@@ -84,12 +64,9 @@ struct BASICScratchpadView: View {
                 Label(error, systemImage: "exclamationmark.triangle.fill")
                     .font(.caption)
                     .foregroundStyle(.red)
-            } else if showSuccess {
-                Label("Program uploaded successfully!", systemImage: "checkmark.circle.fill")
-                    .font(.caption)
-                    .foregroundStyle(.green)
             } else {
-                let lineCount = connection.basicScratchpadCode.split(separator: "\n", omittingEmptySubsequences: true).count
+                let lineCount = connection.basicScratchpadCode
+                    .split(separator: "\n", omittingEmptySubsequences: true).count
                 Text("\(lineCount) line\(lineCount == 1 ? "" : "s")")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -101,11 +78,11 @@ struct BASICScratchpadView: View {
     // MARK: - Toolbar
 
     private var toolbar: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 8) {
             Button {
                 showSpecialCodes.toggle()
             } label: {
-                Label(showSpecialCodes ? "Hide Codes" : "Special Codes",
+                Label(showSpecialCodes ? "Hide Codes" : "Codes",
                       systemImage: "character.bubble")
             }
             .buttonStyle(.bordered)
@@ -117,7 +94,6 @@ struct BASICScratchpadView: View {
                         Button(sample.name) {
                             connection.basicScratchpadCode = sample.code
                             errorMessage = nil
-                            showSuccess = false
                         }
                     }
                 }
@@ -136,14 +112,13 @@ struct BASICScratchpadView: View {
                 uploadProgram()
             } label: {
                 if isUploading {
-                    ProgressView()
-                        .controlSize(.small)
+                    ProgressView().controlSize(.small)
                 } else {
-                    Label("Upload", systemImage: "arrow.up.circle.fill")
+                    Label("Run", systemImage: "play.fill")
                 }
             }
             .buttonStyle(.borderedProminent)
-            .controlSize(.regular)
+            .controlSize(.small)
             .disabled(connection.basicScratchpadCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isUploading)
         }
     }
@@ -151,25 +126,25 @@ struct BASICScratchpadView: View {
     // MARK: - Special Codes Reference
 
     private var specialCodesReference: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 4) {
             Text("Special Codes")
-                .font(.caption)
+                .font(.caption2)
                 .fontWeight(.medium)
                 .foregroundStyle(.secondary)
 
-            let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 4)
-            LazyVGrid(columns: columns, spacing: 2) {
+            let columns = Array(repeating: GridItem(.flexible(), spacing: 2), count: 3)
+            LazyVGrid(columns: columns, spacing: 1) {
                 ForEach(BASICTokenizer.specialCodes, id: \.1) { code, _ in
                     Text(code)
-                        .font(.system(size: 10, design: .monospaced))
+                        .font(.system(size: 9, design: .monospaced))
                         .foregroundStyle(.pink)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
         }
-        .padding(10)
-        .background(.black.opacity(0.3), in: RoundedRectangle(cornerRadius: 8))
-        .frame(maxHeight: 120)
+        .padding(8)
+        .background(.black.opacity(0.2), in: RoundedRectangle(cornerRadius: 6))
+        .frame(maxHeight: 100)
     }
 
     // MARK: - Actions
@@ -179,30 +154,24 @@ struct BASICScratchpadView: View {
         let code = connection.basicScratchpadCode
 
         errorMessage = nil
-        showSuccess = false
         isUploading = true
 
         Task {
             do {
                 let (data, endAddr) = try BASICTokenizer.tokenize(program: code)
-
-                // Write tokenized program to $0801
                 try await client.writeMem(address: 0x0801, data: data)
 
-                // Update BASIC variable pointer at $002D/$002E
                 let ptrData = Data([UInt8(endAddr & 0xFF), UInt8(endAddr >> 8)])
                 try await client.writeMem(address: 0x002D, data: ptrData)
 
-                // Type "RUN" + RETURN into the keyboard buffer to auto-run
-                let runBytes: [UInt8] = [0x52, 0x55, 0x4E, 0x0D] // R, U, N, RETURN
+                // Auto-run
+                let runBytes: [UInt8] = [0x52, 0x55, 0x4E, 0x0D]
                 try await client.writeMem(address: 0x0277, data: Data(runBytes))
                 try await client.writeMem(address: 0x00C6, data: Data([UInt8(runBytes.count)]))
 
-                // Dismiss overlay so user can see the program running
-                onDismiss()
+                errorMessage = nil
             } catch {
                 errorMessage = error.localizedDescription
-                showSuccess = false
             }
             isUploading = false
         }
@@ -219,7 +188,6 @@ struct BASICScratchpadView: View {
            let content = try? String(contentsOf: url, encoding: .utf8) {
             connection.basicScratchpadCode = content
             errorMessage = nil
-            showSuccess = false
         }
     }
 

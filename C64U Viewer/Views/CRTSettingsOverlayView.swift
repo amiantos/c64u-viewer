@@ -6,7 +6,6 @@ import SwiftUI
 
 struct CRTSettingsOverlayView: View {
     @Bindable var connection: C64Connection
-    let onBack: () -> Void
     let onDismiss: () -> Void
 
     @State private var showingSaveAs = false
@@ -17,15 +16,6 @@ struct CRTSettingsOverlayView: View {
             VStack(spacing: 16) {
                 // Header
                 HStack {
-                    Button { onBack() } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "chevron.left")
-                            Text("Back")
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.blue)
-
                     Spacer()
 
                     Text("CRT Settings")

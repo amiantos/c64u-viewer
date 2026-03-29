@@ -6,21 +6,11 @@ import SwiftUI
 
 struct AudioSettingsOverlayView: View {
     @Bindable var connection: C64Connection
-    let onBack: () -> Void
     let onDismiss: () -> Void
 
     var body: some View {
         VStack(spacing: 16) {
             HStack {
-                Button { onBack() } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                        Text("Back")
-                    }
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.blue)
-
                 Spacer()
 
                 Text("Audio")

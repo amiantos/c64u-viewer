@@ -40,8 +40,11 @@ final class C64Connection {
     }
     var isMuted = false
 
-    // Overlay state persisted across open/close
-    var overlayMode: OverlayMode = .controls
+    // Tool panel state
+    var activeToolPanel: ToolPanelType? = nil
+    var toolPanelWidth: CGFloat = 320 {
+        didSet { UserDefaults.standard.set(toolPanelWidth, forKey: "c64_tool_panel_width") }
+    }
     var basicScratchpadCode: String = BASICSamples.helloWorld
 
     private(set) var framesPerSecond: Double = 0
@@ -81,6 +84,9 @@ final class C64Connection {
         }
         if UserDefaults.standard.object(forKey: "c64_balance") != nil {
             balance = UserDefaults.standard.float(forKey: "c64_balance")
+        }
+        if UserDefaults.standard.object(forKey: "c64_tool_panel_width") != nil {
+            toolPanelWidth = CGFloat(UserDefaults.standard.float(forKey: "c64_tool_panel_width"))
         }
 
         // Load settings from preset manager
@@ -195,7 +201,7 @@ final class C64Connection {
         connectionError = nil
         streamsActive = false
         isWaitingForReboot = false
-        overlayMode = .controls
+        activeToolPanel = nil
         fpsTimer?.cancel()
         fpsTimer = nil
         framesPerSecond = 0
