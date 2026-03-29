@@ -36,7 +36,7 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
         outlineView.dataSource = self
         outlineView.delegate = self
         outlineView.style = .sourceList
-        outlineView.rowHeight = 26
+        outlineView.rowSizeStyle = .default
         outlineView.indentationPerLevel = 0
 
         scrollView.documentView = outlineView
