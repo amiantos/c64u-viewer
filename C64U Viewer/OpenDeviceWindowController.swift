@@ -111,10 +111,13 @@ final class OpenDeviceWindowController: NSWindowController {
         stack.translatesAutoresizingMaskIntoConstraints = false
 
         container.addSubview(stack)
+
+        let trailing = stack.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -16)
+        trailing.priority = .defaultHigh
         NSLayoutConstraint.activate([
             stack.topAnchor.constraint(equalTo: container.topAnchor, constant: 16),
             stack.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 16),
-            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -16),
+            trailing,
             ipField.widthAnchor.constraint(equalTo: stack.widthAnchor),
             passwordField.widthAnchor.constraint(equalTo: stack.widthAnchor),
         ])
@@ -154,10 +157,13 @@ final class OpenDeviceWindowController: NSWindowController {
         stack.translatesAutoresizingMaskIntoConstraints = false
 
         container.addSubview(stack)
+
+        let trailing = stack.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -16)
+        trailing.priority = .defaultHigh
         NSLayoutConstraint.activate([
             stack.topAnchor.constraint(equalTo: container.topAnchor, constant: 16),
             stack.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 16),
-            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -16),
+            trailing,
             videoPortField.widthAnchor.constraint(equalTo: stack.widthAnchor),
             audioPortField.widthAnchor.constraint(equalTo: stack.widthAnchor),
         ])

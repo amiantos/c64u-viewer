@@ -16,20 +16,22 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
 
     private let splitViewController = NSSplitViewController()
     private var videoViewController: VideoViewController!
-    private var mtkView: MTKView!
+    private var inspectorItem: NSSplitViewItem?
 
     init(connection: C64Connection) {
         self.connection = connection
 
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 900, height: 600),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
         window.minSize = NSSize(width: 600, height: 400)
         window.center()
         window.isReleasedWhenClosed = false
+        window.titlebarAppearsTransparent = false
+        window.toolbarStyle = .unified
 
         // Set window title
         if let info = connection.deviceInfo {
@@ -55,23 +57,22 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
     // MARK: - Split View Setup
 
     private func setupSplitView() {
-        // Video (center) — always present
-        videoViewController = VideoViewController(connection: connection)
-
-        let videoItem = NSSplitViewItem(viewController: videoViewController)
-        videoItem.minimumThickness = 384
-        splitViewController.addSplitViewItem(videoItem)
-
         // Sidebar (left) — only in Toolbox mode
         if connection.connectionMode == .toolbox {
             let sidebarVC = SidebarViewController(connection: connection)
             sidebarVC.delegate = self
             let sidebarItem = NSSplitViewItem(sidebarWithViewController: sidebarVC)
-            sidebarItem.minimumThickness = 160
-            sidebarItem.maximumThickness = 220
-            sidebarItem.canCollapse = true
-            splitViewController.insertSplitViewItem(sidebarItem, at: 0)
+            sidebarItem.minimumThickness = 180
+            // Set holding priority high so it doesn't auto-collapse on resize
+            sidebarItem.holdingPriority = .defaultHigh
+            splitViewController.addSplitViewItem(sidebarItem)
         }
+
+        // Video (center) — always present
+        videoViewController = VideoViewController(connection: connection)
+        let videoItem = NSSplitViewItem(viewController: videoViewController)
+        videoItem.minimumThickness = 384
+        splitViewController.addSplitViewItem(videoItem)
     }
 
     // MARK: - Toolbar Setup
@@ -88,21 +89,40 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
     // MARK: - NSToolbarDelegate
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [
+        var items: [NSToolbarItem.Identifier] = [
             .toggleSidebar,
-            .flexibleSpace,
+            .sidebarTrackingSeparator,
             .startStopStreams, .runFile, .keyboard, .crtFilter, .audioSettings,
             .flexibleSpace,
             .resetMachine, .rebootMachine, .powerOff, .menuButton,
         ]
+
+        // Add inspector tracking separator and inspector items if we have an inspector
+        if inspectorItem != nil {
+            items.append(.inspectorTrackingSeparator)
+            items.append(contentsOf: [.basicSpecialCodes, .basicFileMenu, .basicRun])
+        }
+
+        return items
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        toolbarDefaultItemIdentifiers(toolbar)
+        [
+            .toggleSidebar, .sidebarTrackingSeparator,
+            .startStopStreams, .runFile, .keyboard, .crtFilter, .audioSettings,
+            .flexibleSpace,
+            .resetMachine, .rebootMachine, .powerOff, .menuButton,
+            .inspectorTrackingSeparator,
+            .basicSpecialCodes, .basicFileMenu, .basicRun,
+        ]
     }
 
     func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier, willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
         switch itemIdentifier {
+        case .inspectorTrackingSeparator:
+            let dividerIndex = splitViewController.splitViewItems.count - 2
+            return NSTrackingSeparatorToolbarItem(identifier: itemIdentifier, splitView: splitViewController.splitView, dividerIndex: max(0, dividerIndex))
+
         case .startStopStreams:
             if connection.streamsActive {
                 return makeToolbarItem(itemIdentifier, label: "Stop Streams", icon: "stop.circle.fill", action: #selector(stopStreams))
@@ -126,6 +146,34 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
             return makeToolbarItem(itemIdentifier, label: "Power Off", icon: "power", action: #selector(powerOffTapped))
         case .menuButton:
             return makeToolbarItem(itemIdentifier, label: "Menu", icon: "line.3.horizontal", action: #selector(menuTapped))
+        case .basicSpecialCodes:
+            return makeToolbarItem(itemIdentifier, label: "Special Codes", icon: "character.bubble", action: #selector(basicToggleSpecialCodes))
+        case .basicFileMenu:
+            let item = makeToolbarItem(itemIdentifier, label: "File", icon: "doc", action: #selector(basicShowFileMenu(_:)))
+            // Attach a menu for the file operations
+            let menu = NSMenu()
+            let samplesItem = NSMenuItem(title: "Samples", action: nil, keyEquivalent: "")
+            let samplesMenu = NSMenu()
+            for sample in BASICSamples.all {
+                let menuItem = NSMenuItem(title: sample.name, action: #selector(basicLoadSample(_:)), keyEquivalent: "")
+                menuItem.target = self
+                menuItem.representedObject = sample
+                samplesMenu.addItem(menuItem)
+            }
+            samplesItem.submenu = samplesMenu
+            menu.addItem(samplesItem)
+            menu.addItem(.separator())
+            let openItem = NSMenuItem(title: "Open…", action: #selector(basicOpenFile), keyEquivalent: "")
+            openItem.target = self
+            menu.addItem(openItem)
+            let saveItem = NSMenuItem(title: "Save As…", action: #selector(basicSaveFile), keyEquivalent: "")
+            saveItem.target = self
+            menu.addItem(saveItem)
+            item.menuFormRepresentation = NSMenuItem() // allows menu in overflow
+            // Use NSMenuToolbarItem for proper menu behavior
+            return item
+        case .basicRun:
+            return makeToolbarItem(itemIdentifier, label: "Run", icon: "play.fill", action: #selector(basicUploadAndRun))
         default:
             return nil
         }
@@ -229,6 +277,51 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
         connection.machineAction(.menuButton)
     }
 
+    // MARK: - BASIC Inspector Toolbar Actions
+
+    private var basicScratchpadVC: BASICScratchpadViewController? {
+        inspectorItem?.viewController as? BASICScratchpadViewController
+    }
+
+    @objc private func basicToggleSpecialCodes() {
+        basicScratchpadVC?.toggleSpecialCodes()
+    }
+
+    @objc private func basicShowFileMenu(_ sender: Any?) {
+        // The file menu is handled through individual menu items
+        basicScratchpadVC?.showFileMenu(from: sender)
+    }
+
+    @objc private func basicLoadSample(_ sender: NSMenuItem) {
+        guard let sample = sender.representedObject as? BASICSample else { return }
+        basicScratchpadVC?.loadSample(sample)
+    }
+
+    @objc private func basicOpenFile() {
+        basicScratchpadVC?.openFile()
+    }
+
+    @objc private func basicSaveFile() {
+        basicScratchpadVC?.saveFile()
+    }
+
+    @objc private func basicUploadAndRun() {
+        basicScratchpadVC?.uploadAndRun()
+    }
+
+    // MARK: - Helpers
+
+    private func rebuildToolbar() {
+        guard let toolbar = window?.toolbar else { return }
+        // Remove all items and re-add from default identifiers
+        while toolbar.items.count > 0 {
+            toolbar.removeItem(at: 0)
+        }
+        for identifier in toolbarDefaultItemIdentifiers(toolbar) {
+            toolbar.insertItem(withItemIdentifier: identifier, at: toolbar.items.count)
+        }
+    }
+
     private func confirmAction(_ title: String, _ message: String, action: @escaping () -> Void) {
         let alert = NSAlert()
         alert.messageText = title
@@ -259,7 +352,30 @@ extension DeviceWindowController: NSWindowDelegate {
 extension DeviceWindowController: SidebarViewControllerDelegate {
     func sidebarDidSelectTool(_ tool: ToolPanelType?) {
         connection.activeToolPanel = tool
-        // TODO: Show/hide inspector split view item
+
+        // Remove existing inspector if any
+        if let existing = inspectorItem {
+            splitViewController.removeSplitViewItem(existing)
+            inspectorItem = nil
+        }
+
+        // Add new inspector for the selected tool
+        if let tool {
+            let viewController: NSViewController
+            switch tool {
+            case .basicScratchpad:
+                viewController = BASICScratchpadViewController(connection: connection)
+            }
+
+            let item = NSSplitViewItem(inspectorWithViewController: viewController)
+            item.minimumThickness = 280
+            item.maximumThickness = 500
+            item.canCollapse = true
+            splitViewController.addSplitViewItem(item)
+            inspectorItem = item
+        }
+
+        rebuildToolbar()
     }
 }
 
@@ -275,4 +391,8 @@ extension NSToolbarItem.Identifier {
     static let rebootMachine = NSToolbarItem.Identifier("rebootMachine")
     static let powerOff = NSToolbarItem.Identifier("powerOff")
     static let menuButton = NSToolbarItem.Identifier("menuButton")
+    static let inspectorTrackingSeparator = NSToolbarItem.Identifier("inspectorTrackingSeparator")
+    static let basicSpecialCodes = NSToolbarItem.Identifier("basicSpecialCodes")
+    static let basicFileMenu = NSToolbarItem.Identifier("basicFileMenu")
+    static let basicRun = NSToolbarItem.Identifier("basicRun")
 }
