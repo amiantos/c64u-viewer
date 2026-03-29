@@ -41,6 +41,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, DeviceWindowController
         fileMenuItem.submenu = fileMenu
         mainMenu.addItem(fileMenuItem)
 
+        // Stream menu
+        let streamMenuItem = NSMenuItem()
+        let streamMenu = NSMenu(title: "Stream")
+        streamMenu.addItem(withTitle: "Disconnect", action: #selector(DeviceWindowController.disconnectDevice), keyEquivalent: "d")
+        streamMenu.addItem(.separator())
+        streamMenu.addItem(withTitle: "Volume Up", action: #selector(DeviceWindowController.volumeUp), keyEquivalent: String(Character(UnicodeScalar(NSUpArrowFunctionKey)!)))
+        streamMenu.items.last?.keyEquivalentModifierMask = .command
+        streamMenu.addItem(withTitle: "Volume Down", action: #selector(DeviceWindowController.volumeDown), keyEquivalent: String(Character(UnicodeScalar(NSDownArrowFunctionKey)!)))
+        streamMenu.items.last?.keyEquivalentModifierMask = .command
+        streamMenu.addItem(withTitle: "Mute", action: #selector(DeviceWindowController.toggleMute), keyEquivalent: "m")
+        streamMenu.items.last?.keyEquivalentModifierMask = [.command, .shift]
+        streamMenuItem.submenu = streamMenu
+        mainMenu.addItem(streamMenuItem)
+
+        // Capture menu
+        let captureMenuItem = NSMenuItem()
+        let captureMenu = NSMenu(title: "Capture")
+        captureMenu.addItem(withTitle: "Take Screenshot", action: #selector(DeviceWindowController.takeScreenshot), keyEquivalent: "s")
+        captureMenu.items.last?.keyEquivalentModifierMask = [.command, .shift]
+        captureMenu.addItem(withTitle: "Start/Stop Recording", action: #selector(DeviceWindowController.toggleRecording), keyEquivalent: "r")
+        captureMenu.items.last?.keyEquivalentModifierMask = [.command, .shift]
+        captureMenuItem.submenu = captureMenu
+        mainMenu.addItem(captureMenuItem)
+
         // Window menu
         let windowMenuItem = NSMenuItem()
         let windowMenu = NSMenu(title: "Window")

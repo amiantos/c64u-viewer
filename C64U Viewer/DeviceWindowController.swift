@@ -21,7 +21,7 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
     init(connection: C64Connection) {
         self.connection = connection
 
-        let window = NSWindow(
+        let window = DeviceWindow(
             contentRect: NSRect(x: 0, y: 0, width: 900, height: 600),
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
@@ -49,6 +49,43 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
 
         window.contentViewController = splitViewController
         window.delegate = self
+
+        videoViewController.onMenuButton = { [weak self] in
+            self?.menuTapped()
+        }
+    }
+
+    // MARK: - Keyboard Forwarding
+
+    func handleKeyDown(with event: NSEvent) -> Bool {
+        guard let forwarder = connection.keyboardForwarder, forwarder.isEnabled else {
+            return false
+        }
+
+        switch Int(event.keyCode) {
+        case 36: forwarder.sendKey(0x0D); return true // Return
+        case 51: forwarder.sendKey(0x14); return true // Delete
+        case 53: forwarder.sendKey(0x03); return true // Escape → RUN/STOP
+        case 126: forwarder.sendKey(0x91); return true // Up
+        case 125: forwarder.sendKey(0x11); return true // Down
+        case 123: forwarder.sendKey(0x9D); return true // Left
+        case 124: forwarder.sendKey(0x1D); return true // Right
+        case 115: // Home
+            if event.modifierFlags.contains(.shift) {
+                forwarder.sendKey(0x93) // CLR
+            } else {
+                forwarder.sendKey(0x13) // HOME
+            }
+            return true
+        default: break
+        }
+
+        if let chars = event.characters, !chars.isEmpty {
+            forwarder.handleKeyPress(chars)
+            return true
+        }
+
+        return false
     }
 
     @available(*, unavailable)
@@ -92,15 +129,26 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
         var items: [NSToolbarItem.Identifier] = [
             .toggleSidebar,
             .sidebarTrackingSeparator,
-            .startStopStreams, .runFile, .keyboard, .crtFilter, .audioSettings,
+            .startStopStreams, .runFile, .keyboard,
             .flexibleSpace,
             .resetMachine, .rebootMachine, .powerOff, .menuButton,
         ]
 
-        // Add inspector tracking separator and inspector items if we have an inspector
+        // Add inspector tracking separator when any inspector is open
         if inspectorItem != nil {
             items.append(.inspectorTrackingSeparator)
-            items.append(contentsOf: [.basicSpecialCodes, .basicFileMenu, .basicRun])
+
+            // Close button first (far left of inspector area)
+            items.append(.closeInspector)
+
+            // Tool-specific items pushed right
+            items.append(.flexibleSpace)
+            switch connection.selectedSidebarItem {
+            case .basicScratchpad:
+                items.append(contentsOf: [.basicSpecialCodes, .basicFileMenu, .basicRun])
+            default:
+                break
+            }
         }
 
         return items
@@ -109,11 +157,11 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
         [
             .toggleSidebar, .sidebarTrackingSeparator,
-            .startStopStreams, .runFile, .keyboard, .crtFilter, .audioSettings,
+            .startStopStreams, .runFile, .keyboard,
             .flexibleSpace,
             .resetMachine, .rebootMachine, .powerOff, .menuButton,
             .inspectorTrackingSeparator,
-            .basicSpecialCodes, .basicFileMenu, .basicRun,
+            .basicSpecialCodes, .basicFileMenu, .basicRun, .closeInspector,
         ]
     }
 
@@ -134,10 +182,6 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
         case .keyboard:
             let isOn = connection.keyboardForwarder?.isEnabled == true
             return makeToolbarItem(itemIdentifier, label: "Keyboard", icon: isOn ? "keyboard.fill" : "keyboard", action: #selector(toggleKeyboard))
-        case .crtFilter:
-            return makeToolbarItem(itemIdentifier, label: "CRT Filter", icon: "tv", action: #selector(showCRTSettings))
-        case .audioSettings:
-            return makeToolbarItem(itemIdentifier, label: "Audio", icon: "speaker.wave.2.fill", action: #selector(showAudioSettings))
         case .resetMachine:
             return makeToolbarItem(itemIdentifier, label: "Reset", icon: "arrow.counterclockwise", action: #selector(resetTapped))
         case .rebootMachine:
@@ -174,6 +218,8 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
             return item
         case .basicRun:
             return makeToolbarItem(itemIdentifier, label: "Run", icon: "play.fill", action: #selector(basicUploadAndRun))
+        case .closeInspector:
+            return makeToolbarItem(itemIdentifier, label: "Close", icon: "xmark.circle", action: #selector(closeInspector))
         default:
             return nil
         }
@@ -231,8 +277,10 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
         guard let forwarder = connection.keyboardForwarder else { return }
         if forwarder.isEnabled {
             forwarder.isEnabled = false
+            videoViewController.setKeyboardStripVisible(false)
         } else if UserDefaults.standard.bool(forKey: "c64_keyboard_info_shown") {
             forwarder.isEnabled = true
+            videoViewController.setKeyboardStripVisible(true)
         } else {
             let alert = NSAlert()
             alert.messageText = "Keyboard Forwarding"
@@ -242,18 +290,12 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
             if alert.runModal() == .alertFirstButtonReturn {
                 UserDefaults.standard.set(true, forKey: "c64_keyboard_info_shown")
                 forwarder.isEnabled = true
+                videoViewController.setKeyboardStripVisible(true)
             }
         }
         refreshToolbarItem(.keyboard)
     }
 
-    @objc private func showCRTSettings() {
-        // TODO: CRT settings panel
-    }
-
-    @objc private func showAudioSettings() {
-        // TODO: Audio settings panel
-    }
 
     @objc private func resetTapped() {
         confirmAction("Reset Machine?", "This will reset the C64.") {
@@ -309,6 +351,15 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
         basicScratchpadVC?.uploadAndRun()
     }
 
+    @objc private func closeInspector() {
+        sidebarDidSelectItem(.dataStreams)
+        sidebarVC?.selectItem(.dataStreams)
+    }
+
+    private var sidebarVC: SidebarViewController? {
+        splitViewController.splitViewItems.first?.viewController as? SidebarViewController
+    }
+
     // MARK: - Helpers
 
     private func rebuildToolbar() {
@@ -321,6 +372,37 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
             toolbar.insertItem(withItemIdentifier: identifier, at: toolbar.items.count)
         }
     }
+
+    // MARK: - Menu Actions
+
+    @objc func disconnectDevice() {
+        window?.close()
+    }
+
+    @objc func volumeUp() {
+        connection.volume = min(1.0, connection.volume + 0.1)
+        connection.isMuted = false
+    }
+
+    @objc func volumeDown() {
+        connection.volume = max(0.0, connection.volume - 0.1)
+        connection.isMuted = false
+    }
+
+    @objc func toggleMute() {
+        connection.isMuted.toggle()
+        connection.audioPlayer.volume = connection.isMuted ? 0.0 : connection.volume
+    }
+
+    @objc func takeScreenshot() {
+        connection.takeScreenshot()
+    }
+
+    @objc func toggleRecording() {
+        connection.toggleRecording()
+    }
+
+    // MARK: - Helpers
 
     private func confirmAction(_ title: String, _ message: String, action: @escaping () -> Void) {
         let alert = NSAlert()
@@ -350,8 +432,8 @@ extension DeviceWindowController: NSWindowDelegate {
 // MARK: - SidebarViewControllerDelegate
 
 extension DeviceWindowController: SidebarViewControllerDelegate {
-    func sidebarDidSelectTool(_ tool: ToolPanelType?) {
-        connection.activeToolPanel = tool
+    func sidebarDidSelectItem(_ item: SidebarItem) {
+        connection.selectedSidebarItem = item
 
         // Remove existing inspector if any
         if let existing = inspectorItem {
@@ -359,20 +441,27 @@ extension DeviceWindowController: SidebarViewControllerDelegate {
             inspectorItem = nil
         }
 
-        // Add new inspector for the selected tool
-        if let tool {
+        // Add inspector for items that need one
+        if item.hasInspector {
             let viewController: NSViewController
-            switch tool {
+            switch item {
+            case .crtSettings:
+                viewController = CRTSettingsViewController(connection: connection)
+            case .audioSettings:
+                viewController = AudioSettingsViewController(connection: connection)
             case .basicScratchpad:
                 viewController = BASICScratchpadViewController(connection: connection)
+            case .dataStreams:
+                fatalError() // dataStreams has no inspector
             }
 
-            let item = NSSplitViewItem(inspectorWithViewController: viewController)
-            item.minimumThickness = 280
-            item.maximumThickness = 500
-            item.canCollapse = true
-            splitViewController.addSplitViewItem(item)
-            inspectorItem = item
+            let splitItem = NSSplitViewItem(inspectorWithViewController: viewController)
+            splitItem.minimumThickness = 280
+            splitItem.maximumThickness = 500
+            splitItem.canCollapse = true
+            splitItem.automaticallyAdjustsSafeAreaInsets = true
+            splitViewController.addSplitViewItem(splitItem)
+            inspectorItem = splitItem
         }
 
         rebuildToolbar()
@@ -385,8 +474,6 @@ extension NSToolbarItem.Identifier {
     static let startStopStreams = NSToolbarItem.Identifier("startStopStreams")
     static let runFile = NSToolbarItem.Identifier("runFile")
     static let keyboard = NSToolbarItem.Identifier("keyboard")
-    static let crtFilter = NSToolbarItem.Identifier("crtFilter")
-    static let audioSettings = NSToolbarItem.Identifier("audioSettings")
     static let resetMachine = NSToolbarItem.Identifier("resetMachine")
     static let rebootMachine = NSToolbarItem.Identifier("rebootMachine")
     static let powerOff = NSToolbarItem.Identifier("powerOff")
@@ -395,4 +482,5 @@ extension NSToolbarItem.Identifier {
     static let basicSpecialCodes = NSToolbarItem.Identifier("basicSpecialCodes")
     static let basicFileMenu = NSToolbarItem.Identifier("basicFileMenu")
     static let basicRun = NSToolbarItem.Identifier("basicRun")
+    static let closeInspector = NSToolbarItem.Identifier("closeInspector")
 }

@@ -5,7 +5,7 @@
 import AppKit
 
 protocol SidebarViewControllerDelegate: AnyObject {
-    func sidebarDidSelectTool(_ tool: ToolPanelType?)
+    func sidebarDidSelectItem(_ item: SidebarItem)
 }
 
 final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTableViewDelegate {
@@ -13,7 +13,7 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
     let connection: C64Connection
 
     private let tableView = NSTableView()
-    private let tools = ToolPanelType.allCases
+    private let items = SidebarItem.allCases
 
     init(connection: C64Connection) {
         self.connection = connection
@@ -28,8 +28,8 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
 
-        let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("tool"))
-        column.title = "Tools"
+        let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("item"))
+        column.title = ""
         tableView.addTableColumn(column)
         tableView.headerView = nil
         tableView.dataSource = self
@@ -41,20 +41,29 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
 
         self.view = scrollView
         self.title = "Tools"
+
+        // Select Data Streams by default
+        tableView.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
+    }
+
+    func selectItem(_ item: SidebarItem) {
+        if let idx = items.firstIndex(of: item) {
+            tableView.selectRowIndexes(IndexSet(integer: idx), byExtendingSelection: false)
+        }
     }
 
     // MARK: - NSTableViewDataSource
 
     func numberOfRows(in tableView: NSTableView) -> Int {
-        tools.count
+        items.count
     }
 
     // MARK: - NSTableViewDelegate
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
-        let tool = tools[row]
+        let item = items[row]
 
-        let cellIdentifier = NSUserInterfaceItemIdentifier("ToolCell")
+        let cellIdentifier = NSUserInterfaceItemIdentifier("SidebarCell")
         let cell: NSTableCellView
         if let existing = tableView.makeView(withIdentifier: cellIdentifier, owner: nil) as? NSTableCellView {
             cell = existing
@@ -83,18 +92,16 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
             ])
         }
 
-        cell.textField?.stringValue = tool.label
-        cell.imageView?.image = NSImage(systemSymbolName: tool.icon, accessibilityDescription: tool.label)
+        cell.textField?.stringValue = item.label
+        cell.imageView?.image = NSImage(systemSymbolName: item.icon, accessibilityDescription: item.label)
 
         return cell
     }
 
     func tableViewSelectionDidChange(_ notification: Notification) {
         let row = tableView.selectedRow
-        if row >= 0 && row < tools.count {
-            delegate?.sidebarDidSelectTool(tools[row])
-        } else {
-            delegate?.sidebarDidSelectTool(nil)
+        if row >= 0 && row < items.count {
+            delegate?.sidebarDidSelectItem(items[row])
         }
     }
 }
