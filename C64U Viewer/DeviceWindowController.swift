@@ -240,7 +240,7 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
         case .basicRun:
             return makeToolbarItem(itemIdentifier, label: "Run", icon: "play.fill", action: #selector(basicUploadAndRun))
         case .closeInspector:
-            return makeToolbarItem(itemIdentifier, label: "Close", icon: "xmark.circle", action: #selector(closeInspector))
+            return makeToolbarItem(itemIdentifier, label: "Hide Inspector", icon: "sidebar.trailing", action: #selector(closeInspector))
         default:
             return nil
         }
