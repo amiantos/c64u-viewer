@@ -3,7 +3,6 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 import Foundation
-import Observation
 
 enum ConnectionMode {
     case viewer
@@ -25,7 +24,6 @@ struct ToolboxSession: Codable, Identifiable, Equatable {
     let date: Date
 }
 
-@Observable
 final class RecentConnections {
     var viewerSessions: [ViewerSession] = []
     var toolboxSessions: [ToolboxSession] = []

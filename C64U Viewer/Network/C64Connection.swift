@@ -3,9 +3,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 import Foundation
-import Observation
 
-@Observable
 final class C64Connection {
     var videoPort: UInt16 = 11000
     var audioPort: UInt16 = 11001
@@ -39,6 +37,10 @@ final class C64Connection {
         }
     }
     var isMuted = false
+
+    // Tool panel state
+    var selectedSidebarItem: SidebarItem = .dataStreams
+    var basicScratchpadCode: String = BASICSamples.helloWorld
 
     private(set) var framesPerSecond: Double = 0
     private var frameCount = 0
@@ -78,9 +80,9 @@ final class C64Connection {
         if UserDefaults.standard.object(forKey: "c64_balance") != nil {
             balance = UserDefaults.standard.float(forKey: "c64_balance")
         }
-
         // Load settings from preset manager
         crtSettings = presetManager.settings(for: presetManager.selectedIdentifier)
+        renderer.crtSettings = crtSettings
 
         mediaCapture.renderer = renderer
         mediaCapture.audioPlayer = audioPlayer
@@ -120,8 +122,11 @@ final class C64Connection {
 
     // MARK: - Toolbox Mode
 
-    func connectToolbox(ip: String, password: String?, savePassword: Bool) {
-        guard !isConnected else { return }
+    func connectToolbox(ip: String, password: String?, savePassword: Bool, completion: ((Bool) -> Void)? = nil) {
+        guard !isConnected else {
+            completion?(false)
+            return
+        }
 
         connectionMode = .toolbox
         connectionError = nil
@@ -144,6 +149,7 @@ final class C64Connection {
                 startFPSCounter()
                 recentConnections.addToolbox(ipAddress: ip, password: password, savePassword: savePassword)
                 startStreams()
+                completion?(true)
             } catch let error as C64APIError {
                 if case .httpError(403) = error {
                     self.connectionError = "Incorrect password"
@@ -153,11 +159,13 @@ final class C64Connection {
                 print("C64U API error: \(error.localizedDescription)")
                 apiClient = nil
                 connectionMode = nil
+                completion?(false)
             } catch {
                 self.connectionError = error.localizedDescription
                 print("C64U API error: \(error.localizedDescription)")
                 apiClient = nil
                 connectionMode = nil
+                completion?(false)
             }
         }
     }
@@ -191,6 +199,7 @@ final class C64Connection {
         connectionError = nil
         streamsActive = false
         isWaitingForReboot = false
+        selectedSidebarItem = .dataStreams
         fpsTimer?.cancel()
         fpsTimer = nil
         framesPerSecond = 0

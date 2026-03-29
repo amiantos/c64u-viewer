@@ -3,7 +3,6 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 @preconcurrency import MetalKit
-import SwiftUI
 
 struct CRTUniformsBuffer {
     var scanlineIntensity: Float
@@ -277,22 +276,4 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
 
         commandBuffer.commit()
     }
-}
-
-// SwiftUI wrapper for MTKView
-struct MetalView: NSViewRepresentable {
-    let renderer: MetalRenderer
-
-    func makeNSView(context: Context) -> MTKView {
-        let view = MTKView()
-        view.device = renderer.device
-        view.colorPixelFormat = .bgra8Unorm
-        view.isPaused = false
-        view.enableSetNeedsDisplay = false
-        // Omit preferredFramesPerSecond to use display's native refresh rate
-        view.delegate = renderer
-        return view
-    }
-
-    func updateNSView(_ nsView: MTKView, context: Context) {}
 }
