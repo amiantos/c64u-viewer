@@ -210,8 +210,11 @@ final class C64Connection {
 
     var streamsActive = false
 
-    func startStreams() {
-        guard let client = apiClient else { return }
+    func startStreams(completion: ((Bool) -> Void)? = nil) {
+        guard let client = apiClient else {
+            completion?(false)
+            return
+        }
         Task {
             do {
                 if let localIP = getLocalIPAddress() {
@@ -219,25 +222,34 @@ final class C64Connection {
                     try await client.startStream("audio", clientIP: localIP, port: audioPort)
                     self.streamsActive = true
                     self.connectionError = nil
+                    completion?(true)
+                } else {
+                    completion?(false)
                 }
             } catch {
                 print("C64U stream start error: \(error.localizedDescription)")
                 self.connectionError = error.localizedDescription
+                completion?(false)
             }
         }
     }
 
-    func stopStreams() {
-        guard let client = apiClient else { return }
+    func stopStreams(completion: ((Bool) -> Void)? = nil) {
+        guard let client = apiClient else {
+            completion?(false)
+            return
+        }
         Task {
             do {
                 try await client.stopStream("video")
                 try await client.stopStream("audio")
                 self.streamsActive = false
                 self.connectionError = nil
+                completion?(true)
             } catch {
                 print("C64U stream stop error: \(error.localizedDescription)")
                 self.connectionError = error.localizedDescription
+                completion?(false)
             }
         }
     }

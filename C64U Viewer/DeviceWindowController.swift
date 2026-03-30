@@ -269,13 +269,15 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
     // MARK: - Toolbar Actions
 
     @objc private func startStreams() {
-        connection.startStreams()
-        refreshToolbarItem(.startStopStreams)
+        connection.startStreams { [weak self] _ in
+            self?.refreshToolbarItem(.startStopStreams)
+        }
     }
 
     @objc private func stopStreams() {
-        connection.stopStreams()
-        refreshToolbarItem(.startStopStreams)
+        connection.stopStreams { [weak self] _ in
+            self?.refreshToolbarItem(.startStopStreams)
+        }
     }
 
     @objc private func runFileTapped() {
