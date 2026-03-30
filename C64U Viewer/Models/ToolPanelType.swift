@@ -52,7 +52,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
 
     var isImplemented: Bool {
         switch self {
-        case .crtSettings, .audioSettings, .basicScratchpad:
+        case .crtSettings, .audioSettings, .basicScratchpad, .fileManager:
             return true
         default:
             return false

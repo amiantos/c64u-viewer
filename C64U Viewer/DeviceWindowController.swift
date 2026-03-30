@@ -165,6 +165,8 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
             switch connection.selectedSidebarItem {
             case .basicScratchpad:
                 items.append(contentsOf: [.basicSpecialCodes, .basicFileMenu, .basicRun])
+            case .fileManager:
+                items.append(contentsOf: [.fmUpload, .fmNewFolder, .fmDelete, .fmRefresh])
             default:
                 break
             }
@@ -180,7 +182,9 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
             .flexibleSpace,
             .pauseResume, .resetMachine, .rebootMachine, .powerOff,
             .inspectorTrackingSeparator,
-            .basicSpecialCodes, .basicFileMenu, .basicRun, .closeInspector, .inspectorTitle,
+            .basicSpecialCodes, .basicFileMenu, .basicRun,
+            .fmUpload, .fmNewFolder, .fmDelete, .fmRefresh,
+            .closeInspector, .inspectorTitle,
         ]
     }
 
@@ -256,6 +260,14 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
             return item
         case .basicRun:
             return makeToolbarItem(itemIdentifier, label: "Run", icon: "play.fill", action: #selector(basicUploadAndRun))
+        case .fmUpload:
+            return makeToolbarItem(itemIdentifier, label: "Upload", icon: "square.and.arrow.up", action: #selector(fmUpload))
+        case .fmNewFolder:
+            return makeToolbarItem(itemIdentifier, label: "New Folder", icon: "folder.badge.plus", action: #selector(fmNewFolder))
+        case .fmDelete:
+            return makeToolbarItem(itemIdentifier, label: "Delete", icon: "trash", action: #selector(fmDelete))
+        case .fmRefresh:
+            return makeToolbarItem(itemIdentifier, label: "Refresh", icon: "arrow.clockwise", action: #selector(fmRefresh))
         case .inspectorTitle:
             let item = NSToolbarItem(itemIdentifier: itemIdentifier)
             let titleText = inspectorItem?.viewController.title ?? ""
@@ -419,6 +431,28 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
         basicScratchpadVC?.uploadAndRun()
     }
 
+    // MARK: - File Manager Toolbar Actions
+
+    private var fileManagerVC: FileManagerViewController? {
+        inspectorItem?.viewController as? FileManagerViewController
+    }
+
+    @objc private func fmUpload() {
+        fileManagerVC?.uploadFiles()
+    }
+
+    @objc private func fmNewFolder() {
+        fileManagerVC?.createNewFolder()
+    }
+
+    @objc private func fmDelete() {
+        fileManagerVC?.deleteSelected()
+    }
+
+    @objc private func fmRefresh() {
+        fileManagerVC?.refreshDirectory()
+    }
+
     @objc private func closeInspector() {
         if let vc = basicScratchpadVC, vc.isDirty {
             vc.promptIfDirty { [weak self] in
@@ -545,6 +579,8 @@ extension DeviceWindowController: SidebarViewControllerDelegate {
                 viewController = AudioSettingsViewController(connection: connection)
             case .basicScratchpad:
                 viewController = BASICScratchpadViewController(connection: connection)
+            case .fileManager:
+                viewController = FileManagerViewController(connection: connection)
             default:
                 return // not yet implemented or no inspector
             }
@@ -589,6 +625,10 @@ extension NSToolbarItem.Identifier {
     static let basicSpecialCodes = NSToolbarItem.Identifier("basicSpecialCodes")
     static let basicFileMenu = NSToolbarItem.Identifier("basicFileMenu")
     static let basicRun = NSToolbarItem.Identifier("basicRun")
+    static let fmUpload = NSToolbarItem.Identifier("fmUpload")
+    static let fmNewFolder = NSToolbarItem.Identifier("fmNewFolder")
+    static let fmDelete = NSToolbarItem.Identifier("fmDelete")
+    static let fmRefresh = NSToolbarItem.Identifier("fmRefresh")
     static let closeInspector = NSToolbarItem.Identifier("closeInspector")
     static let inspectorTitle = NSToolbarItem.Identifier("inspectorTitle")
 }
