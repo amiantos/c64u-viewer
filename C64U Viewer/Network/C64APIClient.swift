@@ -78,6 +78,14 @@ final class C64APIClient: Sendable {
         try await put("/v1/machine:menu_button")
     }
 
+    func machinePause() async throws {
+        try await put("/v1/machine:pause")
+    }
+
+    func machineResume() async throws {
+        try await put("/v1/machine:resume")
+    }
+
     // MARK: - Memory Access
 
     func readMem(address: Int, length: Int = 1) async throws -> Data {

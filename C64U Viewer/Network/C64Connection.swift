@@ -212,6 +212,7 @@ final class C64Connection {
     // MARK: - Toolbox Actions
 
     var streamsActive = false
+    var isPaused = false
 
     func startStreams(completion: ((Bool) -> Void)? = nil) {
         guard let client = apiClient else {
@@ -275,7 +276,7 @@ final class C64Connection {
 
     var isWaitingForReboot = false
 
-    func machineAction(_ action: MachineAction) {
+    func machineAction(_ action: MachineAction, completion: (() -> Void)? = nil) {
         guard let client = apiClient else { return }
         Task {
             do {
@@ -284,7 +285,15 @@ final class C64Connection {
                 case .reboot: try await client.machineReboot()
                 case .powerOff: try await client.machinePowerOff()
                 case .menuButton: try await client.menuButton()
+                case .pause:
+                    try await client.machinePause()
+                    self.isPaused = true
+                case .resume:
+                    try await client.machineResume()
+                    self.isPaused = false
                 }
+
+                completion?()
 
                 if action == .reboot {
                     await waitForDeviceAndRestartStreams(client: client)
@@ -403,5 +412,5 @@ enum RunnerType {
 }
 
 enum MachineAction: Equatable {
-    case reset, reboot, powerOff, menuButton
+    case reset, reboot, powerOff, menuButton, pause, resume
 }

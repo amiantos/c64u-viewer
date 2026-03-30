@@ -66,7 +66,7 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
         self.windowFrameAutosaveName = autosaveKey
 
         videoViewController.onMenuButton = { [weak self] in
-            self?.menuTapped()
+            self?.connection.machineAction(.menuButton)
         }
     }
 
@@ -149,7 +149,7 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
             .sidebarTrackingSeparator,
             .startStopStreams, .runFile, .keyboard,
             .flexibleSpace,
-            .resetMachine, .rebootMachine, .powerOff, .menuButton,
+            .pauseResume, .resetMachine, .rebootMachine, .powerOff,
         ]
 
         // Add inspector tracking separator when any inspector is open
@@ -178,7 +178,7 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
             .toggleSidebar, .sidebarTrackingSeparator,
             .startStopStreams, .runFile, .keyboard,
             .flexibleSpace,
-            .resetMachine, .rebootMachine, .powerOff, .menuButton,
+            .pauseResume, .resetMachine, .rebootMachine, .powerOff,
             .inspectorTrackingSeparator,
             .basicSpecialCodes, .basicFileMenu, .basicRun, .closeInspector, .inspectorTitle,
         ]
@@ -207,8 +207,12 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
             return makeToolbarItem(itemIdentifier, label: "Reboot", icon: "arrow.trianglehead.2.clockwise", action: #selector(rebootTapped))
         case .powerOff:
             return makeToolbarItem(itemIdentifier, label: "Power Off", icon: "power", action: #selector(powerOffTapped))
-        case .menuButton:
-            return makeToolbarItem(itemIdentifier, label: "Menu", icon: "line.3.horizontal", action: #selector(menuTapped))
+        case .pauseResume:
+            if connection.isPaused {
+                return makeToolbarItem(itemIdentifier, label: "Resume", icon: "play", action: #selector(resumeMachine))
+            } else {
+                return makeToolbarItem(itemIdentifier, label: "Pause", icon: "pause", action: #selector(pauseMachine))
+            }
         case .basicSpecialCodes:
             let isOn = basicScratchpadVC?.isSpecialCodesVisible == true
             return makeToolbarItem(itemIdentifier, label: "Special Codes", icon: isOn ? "character.bubble.fill" : "character.bubble", action: #selector(basicToggleSpecialCodes))
@@ -361,8 +365,16 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
         }
     }
 
-    @objc private func menuTapped() {
-        connection.machineAction(.menuButton)
+    @objc private func pauseMachine() {
+        connection.machineAction(.pause) { [weak self] in
+            self?.refreshToolbarItem(.pauseResume)
+        }
+    }
+
+    @objc private func resumeMachine() {
+        connection.machineAction(.resume) { [weak self] in
+            self?.refreshToolbarItem(.pauseResume)
+        }
     }
 
     // MARK: - BASIC Inspector Toolbar Actions
@@ -571,7 +583,7 @@ extension NSToolbarItem.Identifier {
     static let resetMachine = NSToolbarItem.Identifier("resetMachine")
     static let rebootMachine = NSToolbarItem.Identifier("rebootMachine")
     static let powerOff = NSToolbarItem.Identifier("powerOff")
-    static let menuButton = NSToolbarItem.Identifier("menuButton")
+    static let pauseResume = NSToolbarItem.Identifier("pauseResume")
     static let inspectorTrackingSeparator = NSToolbarItem.Identifier("inspectorTrackingSeparator")
     static let basicSpecialCodes = NSToolbarItem.Identifier("basicSpecialCodes")
     static let basicFileMenu = NSToolbarItem.Identifier("basicFileMenu")
