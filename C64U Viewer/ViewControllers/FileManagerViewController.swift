@@ -12,6 +12,8 @@ final class FileManagerViewController: NSViewController, NSTableViewDataSource, 
     private var pathControl: NSPathControl!
     private var statusLabel: NSTextField!
     private var progressIndicator: NSProgressIndicator!
+    private var driveALabel: NSTextField!
+    private var driveBLabel: NSTextField!
 
     private var currentPath = "/"
     private var entries: [FTPFileEntry] = []
@@ -107,8 +109,29 @@ final class FileManagerViewController: NSViewController, NSTableViewDataSource, 
         statusBar.edgeInsets = NSEdgeInsets(top: 4, left: 8, bottom: 4, right: 8)
         statusBar.translatesAutoresizingMaskIntoConstraints = false
 
+        // Drive status panel (bottom, above status bar)
+        let separator = NSBox()
+        separator.boxType = .separator
+        separator.translatesAutoresizingMaskIntoConstraints = false
+
+        let drivePanel = NSStackView()
+        drivePanel.orientation = .vertical
+        drivePanel.spacing = 2
+        drivePanel.translatesAutoresizingMaskIntoConstraints = false
+        drivePanel.edgeInsets = NSEdgeInsets(top: 4, left: 8, bottom: 4, right: 8)
+
+        let driveARow = makeDriveRow("A")
+        driveALabel = driveARow.label
+        let driveBRow = makeDriveRow("B")
+        driveBLabel = driveBRow.label
+
+        drivePanel.addArrangedSubview(driveARow.view)
+        drivePanel.addArrangedSubview(driveBRow.view)
+
         container.addSubview(pathControl)
         container.addSubview(scrollView)
+        container.addSubview(separator)
+        container.addSubview(drivePanel)
         container.addSubview(statusBar)
 
         NSLayoutConstraint.activate([
@@ -120,7 +143,15 @@ final class FileManagerViewController: NSViewController, NSTableViewDataSource, 
             scrollView.topAnchor.constraint(equalTo: pathControl.bottomAnchor, constant: 4),
             scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: statusBar.topAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: separator.topAnchor),
+
+            separator.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            separator.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            separator.bottomAnchor.constraint(equalTo: drivePanel.topAnchor),
+
+            drivePanel.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            drivePanel.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            drivePanel.bottomAnchor.constraint(equalTo: statusBar.topAnchor),
 
             statusBar.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             statusBar.trailingAnchor.constraint(equalTo: container.trailingAnchor),
@@ -140,6 +171,103 @@ final class FileManagerViewController: NSViewController, NSTableViewDataSource, 
         connectAndLoad()
     }
 
+    // MARK: - Drive Status
+
+    private func makeDriveRow(_ drive: String) -> (view: NSView, label: NSTextField) {
+        let row = NSStackView()
+        row.orientation = .horizontal
+        row.spacing = 4
+
+        let icon = NSImageView(image: NSImage(systemSymbolName: "externaldrive.fill", accessibilityDescription: nil)!)
+        icon.contentTintColor = .secondaryLabelColor
+        icon.setContentHuggingPriority(.required, for: .horizontal)
+
+        let driveLabel = NSTextField(labelWithString: "\(drive):")
+        driveLabel.font = .systemFont(ofSize: 10, weight: .semibold)
+        driveLabel.textColor = .secondaryLabelColor
+        driveLabel.setContentHuggingPriority(.required, for: .horizontal)
+
+        let imageLabel = NSTextField(labelWithString: "—")
+        imageLabel.font = .systemFont(ofSize: 10)
+        imageLabel.textColor = .labelColor
+        imageLabel.lineBreakMode = .byTruncatingMiddle
+
+        let ejectButton = NSButton(image: NSImage(systemSymbolName: "eject.fill", accessibilityDescription: "Eject")!, target: self, action: #selector(ejectDrive(_:)))
+        ejectButton.bezelStyle = .toolbar
+        ejectButton.controlSize = .mini
+        ejectButton.tag = drive == "A" ? 0 : 1
+
+        row.addArrangedSubview(icon)
+        row.addArrangedSubview(driveLabel)
+        row.addArrangedSubview(imageLabel)
+        row.addArrangedSubview(ejectButton)
+
+        return (row, imageLabel)
+    }
+
+    func refreshDriveStatus() {
+        guard let client = connection.apiClient else { return }
+        Task {
+            do {
+                let drives = try await client.fetchDrives()
+                updateDriveLabel(driveALabel, info: drives["a"])
+                updateDriveLabel(driveBLabel, info: drives["b"])
+            } catch {
+                print("[FileManager] Drive status error: \(error)")
+            }
+        }
+    }
+
+    private func updateDriveLabel(_ label: NSTextField?, info: [String: Any]?) {
+        guard let label else { return }
+        guard let info else {
+            label.stringValue = "—"
+            label.textColor = .tertiaryLabelColor
+            return
+        }
+
+        let enabled = info["enabled"] as? Bool ?? false
+        let image = info["image_file"] as? String ?? ""
+
+        if !enabled {
+            label.stringValue = "Disabled"
+            label.textColor = .tertiaryLabelColor
+        } else if image.isEmpty {
+            label.stringValue = "Empty"
+            label.textColor = .secondaryLabelColor
+        } else {
+            label.stringValue = (image as NSString).lastPathComponent
+            label.textColor = .labelColor
+        }
+    }
+
+    @objc private func ejectDrive(_ sender: NSButton) {
+        let drive = sender.tag == 0 ? "a" : "b"
+        guard let client = connection.apiClient else { return }
+        Task {
+            do {
+                try await client.removeDisk(drive: drive)
+                refreshDriveStatus()
+                statusLabel.stringValue = "Ejected Drive \(drive.uppercased())"
+            } catch {
+                statusLabel.stringValue = "Error: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    @objc private func resetDrive(_ sender: NSButton) {
+        let drive = sender.tag == 0 ? "a" : "b"
+        guard let client = connection.apiClient else { return }
+        Task {
+            do {
+                try await client.resetDrive(drive)
+                statusLabel.stringValue = "Reset Drive \(drive.uppercased())"
+            } catch {
+                statusLabel.stringValue = "Error: \(error.localizedDescription)"
+            }
+        }
+    }
+
     // MARK: - FTP Connection
 
     private func connectAndLoad() {
@@ -155,6 +283,7 @@ final class FileManagerViewController: NSViewController, NSTableViewDataSource, 
             do {
                 try await ftpClient?.connect()
                 statusLabel.stringValue = "Connected"
+                refreshDriveStatus()
                 await navigateTo(connection.fileManagerCurrentPath)
             } catch {
                 statusLabel.stringValue = "FTP error: \(error.localizedDescription)"
@@ -467,6 +596,7 @@ final class FileManagerViewController: NSViewController, NSTableViewDataSource, 
                 try await client.writeMem(address: 0x00C6, data: Data([UInt8(runBytes.count)]))
 
                 statusLabel.stringValue = "Loading \(entry.name)"
+                refreshDriveStatus()
             } catch {
                 statusLabel.stringValue = "Error: \(error.localizedDescription)"
             }
@@ -479,6 +609,7 @@ final class FileManagerViewController: NSViewController, NSTableViewDataSource, 
             do {
                 try await client.mountDisk(drive: "a", imagePath: entry.path)
                 statusLabel.stringValue = "Mounted \(entry.name) on Drive A"
+                refreshDriveStatus()
             } catch {
                 statusLabel.stringValue = "Error: \(error.localizedDescription)"
             }
@@ -491,6 +622,7 @@ final class FileManagerViewController: NSViewController, NSTableViewDataSource, 
             do {
                 try await client.mountDisk(drive: "b", imagePath: entry.path)
                 statusLabel.stringValue = "Mounted \(entry.name) on Drive B"
+                refreshDriveStatus()
             } catch {
                 statusLabel.stringValue = "Error: \(error.localizedDescription)"
             }

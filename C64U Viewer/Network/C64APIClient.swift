@@ -88,8 +88,36 @@ final class C64APIClient: Sendable {
 
     // MARK: - Drives
 
+    func fetchDrives() async throws -> [String: [String: Any]] {
+        let request = makeRequest("/v1/drives", method: "GET")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try validateResponse(response)
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let drives = json["drives"] as? [[String: Any]] else {
+            return [:]
+        }
+        // Flatten: [ {"a": {...}}, {"b": {...}} ] → ["a": {...}, "b": {...}]
+        var result: [String: [String: Any]] = [:]
+        for driveObj in drives {
+            for (key, value) in driveObj {
+                if let info = value as? [String: Any] {
+                    result[key] = info
+                }
+            }
+        }
+        return result
+    }
+
     func mountDisk(drive: String, imagePath: String) async throws {
         try await put("/v1/drives/\(drive):mount?image=\(imagePath.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? imagePath)")
+    }
+
+    func removeDisk(drive: String) async throws {
+        try await put("/v1/drives/\(drive):remove")
+    }
+
+    func resetDrive(_ drive: String) async throws {
+        try await put("/v1/drives/\(drive):reset")
     }
 
     // MARK: - Machine Control
