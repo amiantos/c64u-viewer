@@ -573,10 +573,10 @@ extension DeviceWindowController: SidebarViewControllerDelegate {
         if item.hasInspector && item.isImplemented {
             let viewController: NSViewController
             switch item {
-            case .crtSettings:
-                viewController = CRTSettingsViewController(connection: connection)
-            case .audioSettings:
-                viewController = AudioSettingsViewController(connection: connection)
+            case .system:
+                viewController = SystemViewController(connection: connection)
+            case .displayAndAudio:
+                viewController = DisplayAudioViewController(connection: connection)
             case .basicScratchpad:
                 viewController = BASICScratchpadViewController(connection: connection)
             case .fileManager:

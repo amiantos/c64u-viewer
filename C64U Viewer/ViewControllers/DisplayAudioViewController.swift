@@ -4,7 +4,7 @@
 
 import AppKit
 
-final class CRTSettingsViewController: NSViewController {
+final class DisplayAudioViewController: NSViewController {
     let connection: C64Connection
     private var sliders: [String: NSSlider] = [:]
     private var presetPopup: NSPopUpButton!
@@ -15,7 +15,7 @@ final class CRTSettingsViewController: NSViewController {
     init(connection: C64Connection) {
         self.connection = connection
         super.init(nibName: nil, bundle: nil)
-        self.title = "CRT Filter"
+        self.title = "Display & Audio"
     }
 
     @available(*, unavailable)
@@ -39,8 +39,15 @@ final class CRTSettingsViewController: NSViewController {
         stack.spacing = 6
         stack.translatesAutoresizingMaskIntoConstraints = false
 
-        // Preset picker
-        addSection("Preset", to: stack)
+        // ── Audio ──
+        addSection("Audio", to: stack)
+        addSlider("volume", label: "Volume", range: 0...1, to: stack)
+        addSlider("balance", label: "Balance", range: -1...1, to: stack)
+
+        addSeparator(to: stack)
+
+        // ── CRT Preset ──
+        addSection("CRT Preset", to: stack)
         presetPopup = NSPopUpButton(frame: .zero, pullsDown: false)
         rebuildPresetPopup()
         presetPopup.target = self
@@ -48,7 +55,6 @@ final class CRTSettingsViewController: NSViewController {
         presetPopup.translatesAutoresizingMaskIntoConstraints = false
         stack.addArrangedSubview(presetPopup)
 
-        // Preset management buttons
         let presetButtons = NSStackView()
         presetButtons.orientation = .horizontal
         presetButtons.spacing = 6
@@ -74,7 +80,7 @@ final class CRTSettingsViewController: NSViewController {
 
         addSeparator(to: stack)
 
-        // Scanlines
+        // ── Scanlines ──
         addSection("Scanlines", to: stack)
         addSlider("scanlineIntensity", label: "Intensity", range: 0...1, to: stack)
         addSlider("scanlineWidth", label: "Width", range: 0...1, to: stack)
@@ -146,28 +152,22 @@ final class CRTSettingsViewController: NSViewController {
         self.view = container
     }
 
-    // MARK: - Preset Popup
+    // MARK: - Preset Management
 
     private func rebuildPresetPopup() {
         presetPopup.removeAllItems()
-        let entries = connection.presetManager.allPresetEntries
-        for entry in entries {
+        for entry in connection.presetManager.allPresetEntries {
             presetPopup.addItem(withTitle: entry.name)
         }
-        // Select current
-        let entries2 = connection.presetManager.allPresetEntries
-        if let idx = entries2.firstIndex(where: { $0.id == connection.presetManager.selectedIdentifier }) {
+        if let idx = connection.presetManager.allPresetEntries.firstIndex(where: { $0.id == connection.presetManager.selectedIdentifier }) {
             presetPopup.selectItem(at: idx)
         }
     }
 
     private func updatePresetButtons() {
-        let selected = connection.presetManager.selectedIdentifier
-        // Save As is always visible
         saveAsButton.isHidden = false
-        switch selected {
+        switch connection.presetManager.selectedIdentifier {
         case .builtIn(let preset):
-            // Reset only visible when a built-in preset has been modified
             resetButton.isHidden = !connection.presetManager.isModified(preset)
             deleteButton.isHidden = true
         case .custom:
@@ -176,7 +176,7 @@ final class CRTSettingsViewController: NSViewController {
         }
     }
 
-    // MARK: - Helpers
+    // MARK: - UI Helpers
 
     private func addSection(_ title: String, to stack: NSStackView) {
         let label = NSTextField(labelWithString: title)
@@ -219,6 +219,11 @@ final class CRTSettingsViewController: NSViewController {
     }
 
     private func currentValue(for key: String) -> Float {
+        switch key {
+        case "volume": return connection.volume
+        case "balance": return connection.balance
+        default: break
+        }
         let s = connection.crtSettings
         switch key {
         case "scanlineIntensity": return s.scanlineIntensity
@@ -238,12 +243,61 @@ final class CRTSettingsViewController: NSViewController {
 
     // MARK: - Actions
 
+    @objc private func sliderChanged(_ sender: NSSlider) {
+        guard let key = sender.identifier?.rawValue else { return }
+        let value = Float(sender.doubleValue)
+
+        // Audio sliders
+        if key == "volume" {
+            connection.volume = value
+            connection.isMuted = false
+            return
+        }
+        if key == "balance" {
+            connection.balance = value
+            return
+        }
+
+        // CRT sliders
+        switch key {
+        case "scanlineIntensity": connection.crtSettings.scanlineIntensity = value
+        case "scanlineWidth": connection.crtSettings.scanlineWidth = value
+        case "blurRadius": connection.crtSettings.blurRadius = value
+        case "bloomIntensity": connection.crtSettings.bloomIntensity = value
+        case "bloomRadius": connection.crtSettings.bloomRadius = value
+        case "afterglowStrength": connection.crtSettings.afterglowStrength = value
+        case "afterglowDecaySpeed": connection.crtSettings.afterglowDecaySpeed = value
+        case "tintStrength": connection.crtSettings.tintStrength = value
+        case "maskIntensity": connection.crtSettings.maskIntensity = value
+        case "curvatureAmount": connection.crtSettings.curvatureAmount = value
+        case "vignetteStrength": connection.crtSettings.vignetteStrength = value
+        default: break
+        }
+        connection.applySettingsChange()
+        rebuildPresetPopup()
+        updatePresetButtons()
+    }
+
     @objc private func presetChanged(_ sender: NSPopUpButton) {
         let entries = connection.presetManager.allPresetEntries
         let index = sender.indexOfSelectedItem
         guard index >= 0, index < entries.count else { return }
         connection.selectPreset(entries[index].id)
         refreshSliders()
+        updatePresetButtons()
+    }
+
+    @objc private func tintModeChanged(_ sender: NSPopUpButton) {
+        connection.crtSettings.tintMode = sender.indexOfSelectedItem
+        connection.applySettingsChange()
+        rebuildPresetPopup()
+        updatePresetButtons()
+    }
+
+    @objc private func maskTypeChanged(_ sender: NSPopUpButton) {
+        connection.crtSettings.maskType = sender.indexOfSelectedItem
+        connection.applySettingsChange()
+        rebuildPresetPopup()
         updatePresetButtons()
     }
 
@@ -285,44 +339,6 @@ final class CRTSettingsViewController: NSViewController {
         updatePresetButtons()
     }
 
-    @objc private func tintModeChanged(_ sender: NSPopUpButton) {
-        connection.crtSettings.tintMode = sender.indexOfSelectedItem
-        connection.applySettingsChange()
-        refreshPresetState()
-    }
-
-    @objc private func maskTypeChanged(_ sender: NSPopUpButton) {
-        connection.crtSettings.maskType = sender.indexOfSelectedItem
-        connection.applySettingsChange()
-        refreshPresetState()
-    }
-
-    @objc private func sliderChanged(_ sender: NSSlider) {
-        guard let key = sender.identifier?.rawValue else { return }
-        let value = Float(sender.doubleValue)
-        switch key {
-        case "scanlineIntensity": connection.crtSettings.scanlineIntensity = value
-        case "scanlineWidth": connection.crtSettings.scanlineWidth = value
-        case "blurRadius": connection.crtSettings.blurRadius = value
-        case "bloomIntensity": connection.crtSettings.bloomIntensity = value
-        case "bloomRadius": connection.crtSettings.bloomRadius = value
-        case "afterglowStrength": connection.crtSettings.afterglowStrength = value
-        case "afterglowDecaySpeed": connection.crtSettings.afterglowDecaySpeed = value
-        case "tintStrength": connection.crtSettings.tintStrength = value
-        case "maskIntensity": connection.crtSettings.maskIntensity = value
-        case "curvatureAmount": connection.crtSettings.curvatureAmount = value
-        case "vignetteStrength": connection.crtSettings.vignetteStrength = value
-        default: break
-        }
-        connection.applySettingsChange()
-        refreshPresetState()
-    }
-
-    private func refreshPresetState() {
-        rebuildPresetPopup()
-        updatePresetButtons()
-    }
-
     private func refreshSliders() {
         for (key, slider) in sliders {
             slider.doubleValue = Double(currentValue(for: key))
@@ -330,7 +346,7 @@ final class CRTSettingsViewController: NSViewController {
     }
 }
 
-// MARK: - Flipped View
+// MARK: - Helpers
 
 private final class FlippedView: NSView {
     override var isFlipped: Bool { true }

@@ -5,54 +5,45 @@
 import Foundation
 
 enum SidebarItem: String, CaseIterable, Identifiable {
-    // Settings
-    case crtSettings
-    case audioSettings
-
     // Tools
     case basicScratchpad
     case fileManager
-    case driveManagement
-    case diskFlipList
-    case configurationManager
 
     // Developer
     case memoryBrowser
     case debugStreamViewer
 
+    // Settings
+    case system
+    case displayAndAudio
+
     var id: String { rawValue }
 
     var label: String {
         switch self {
-        case .crtSettings: "CRT Filter"
-        case .audioSettings: "Audio"
         case .basicScratchpad: "BASIC Scratchpad"
         case .fileManager: "File Manager"
-        case .driveManagement: "Drive Management"
-        case .diskFlipList: "Disk Flip List"
-        case .configurationManager: "Configuration"
         case .memoryBrowser: "Memory Browser"
         case .debugStreamViewer: "Debug Stream"
+        case .system: "System"
+        case .displayAndAudio: "Display & Audio"
         }
     }
 
     var icon: String {
         switch self {
-        case .crtSettings: "tv"
-        case .audioSettings: "speaker.wave.2.fill"
         case .basicScratchpad: "chevron.left.forwardslash.chevron.right"
         case .fileManager: "folder"
-        case .driveManagement: "externaldrive"
-        case .diskFlipList: "square.stack"
-        case .configurationManager: "gearshape"
         case .memoryBrowser: "memorychip"
         case .debugStreamViewer: "ladybug"
+        case .system: "gearshape"
+        case .displayAndAudio: "tv"
         }
     }
 
     var isImplemented: Bool {
         switch self {
-        case .crtSettings, .audioSettings, .basicScratchpad, .fileManager:
+        case .basicScratchpad, .fileManager, .system, .displayAndAudio:
             return true
         default:
             return false
@@ -65,10 +56,10 @@ enum SidebarItem: String, CaseIterable, Identifiable {
 
     var preferredInspectorWidth: CGFloat {
         switch self {
-        case .crtSettings: return 380
-        case .audioSettings: return 350
         case .basicScratchpad: return 500
-        case .fileManager, .driveManagement, .diskFlipList, .configurationManager: return 450
+        case .fileManager: return 450
+        case .system: return 420
+        case .displayAndAudio: return 400
         case .memoryBrowser: return 500
         case .debugStreamViewer: return 450
         }
@@ -83,7 +74,7 @@ struct SidebarSection {
 }
 
 let sidebarSections: [SidebarSection] = [
-    SidebarSection(title: "Tools", items: [.basicScratchpad, .fileManager, .driveManagement, .diskFlipList, .configurationManager]),
+    SidebarSection(title: "Tools", items: [.basicScratchpad, .fileManager]),
     SidebarSection(title: "Developer", items: [.memoryBrowser, .debugStreamViewer]),
-    SidebarSection(title: "Settings", items: [.crtSettings, .audioSettings]),
+    SidebarSection(title: "Settings", items: [.system, .displayAndAudio]),
 ]

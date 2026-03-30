@@ -120,6 +120,42 @@ final class C64APIClient: Sendable {
         try await put("/v1/drives/\(drive):reset")
     }
 
+    // MARK: - Configuration
+
+    func fetchConfigCategories() async throws -> [String] {
+        let request = makeRequest("/v1/configs", method: "GET")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try validateResponse(response)
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let categories = json["categories"] as? [String] else { return [] }
+        return categories
+    }
+
+    func fetchConfigCategory(_ category: String) async throws -> [String: Any] {
+        let encoded = category.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? category
+        let request = makeRequest("/v1/configs/\(encoded)", method: "GET")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try validateResponse(response)
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let items = json[category] as? [String: Any] else { return [:] }
+        return items
+    }
+
+    func setConfigItem(_ category: String, item: String, value: String) async throws {
+        let catEncoded = category.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? category
+        let itemEncoded = item.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? item
+        let valEncoded = value.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? value
+        try await put("/v1/configs/\(catEncoded)/\(itemEncoded)?value=\(valEncoded)")
+    }
+
+    func saveConfigToFlash() async throws {
+        try await put("/v1/configs:save_to_flash")
+    }
+
+    func loadConfigFromFlash() async throws {
+        try await put("/v1/configs:load_from_flash")
+    }
+
     // MARK: - Machine Control
 
     func machineReset() async throws {
