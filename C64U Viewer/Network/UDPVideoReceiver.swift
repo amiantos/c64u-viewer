@@ -71,7 +71,7 @@ final class UDPVideoReceiver: @unchecked Sendable {
     private func receivePacket(on connection: NWConnection) {
         connection.receiveMessage { [weak self] content, _, _, error in
             guard let self, let data = content else {
-                if let error { print("Video receive error: \(error)") }
+                // Silence "Operation canceled" from intentional connection cleanup
                 return
             }
             self.packetsReceived += 1

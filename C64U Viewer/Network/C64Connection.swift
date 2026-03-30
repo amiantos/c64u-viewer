@@ -2,6 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+import CoreWLAN
 import Foundation
 
 final class C64Connection {
@@ -353,7 +354,10 @@ final class C64Connection {
     }
 
     func getLocalIPAddress() -> String? {
-        var address: String?
+        // Identify WiFi interface to deprioritize it
+        let wifiInterface = CWWiFiClient.shared().interface()?.interfaceName
+
+        var candidates: [(address: String, interface: String)] = []
         var ifaddr: UnsafeMutablePointer<ifaddrs>?
         guard getifaddrs(&ifaddr) == 0, let firstAddr = ifaddr else { return nil }
         defer { freeifaddrs(ifaddr) }
@@ -361,6 +365,7 @@ final class C64Connection {
         for ptr in sequence(first: firstAddr, next: { $0.pointee.ifa_next }) {
             let flags = Int32(ptr.pointee.ifa_flags)
             let addr = ptr.pointee.ifa_addr.pointee
+            let name = String(cString: ptr.pointee.ifa_name)
 
             guard (flags & (IFF_UP | IFF_RUNNING)) != 0,
                   (flags & IFF_LOOPBACK) == 0,
@@ -370,11 +375,24 @@ final class C64Connection {
             if getnameinfo(ptr.pointee.ifa_addr, socklen_t(addr.sa_len),
                            &hostname, socklen_t(hostname.count),
                            nil, 0, NI_NUMERICHOST) == 0 {
-                address = String(cString: hostname)
-                break
+                candidates.append((String(cString: hostname), name))
             }
         }
-        return address
+
+        // Prefer wired (non-WiFi) interfaces for lower latency
+        let chosen: (address: String, interface: String)?
+        if let wired = candidates.first(where: { $0.interface != wifiInterface }) {
+            chosen = wired
+        } else {
+            chosen = candidates.first
+        }
+
+        if let chosen {
+            let isWifi = chosen.interface == wifiInterface
+            print("Using \(isWifi ? "WiFi" : "wired") interface \(chosen.interface): \(chosen.address)")
+            return chosen.address
+        }
+        return nil
     }
 }
 
