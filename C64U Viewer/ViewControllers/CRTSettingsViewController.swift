@@ -22,9 +22,8 @@ final class CRTSettingsViewController: NSViewController {
     required init?(coder: NSCoder) { fatalError() }
 
     override func loadView() {
-        let container = NSView()
-        container.wantsLayer = true
-        container.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
+        let container = BackgroundView()
+        container.backgroundColor = .controlBackgroundColor
 
         let scrollView = NSScrollView()
         scrollView.hasVerticalScroller = true

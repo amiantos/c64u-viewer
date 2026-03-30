@@ -17,9 +17,8 @@ final class AudioSettingsViewController: NSViewController {
     required init?(coder: NSCoder) { fatalError() }
 
     override func loadView() {
-        let container = NSView()
-        container.wantsLayer = true
-        container.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
+        let container = BackgroundView()
+        container.backgroundColor = .controlBackgroundColor
 
         let stack = NSStackView()
         stack.orientation = .vertical
