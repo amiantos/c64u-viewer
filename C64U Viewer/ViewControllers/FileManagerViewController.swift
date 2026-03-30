@@ -5,7 +5,7 @@
 import AppKit
 internal import UniformTypeIdentifiers
 
-final class FileManagerViewController: NSViewController, NSTableViewDataSource, NSTableViewDelegate {
+final class FileManagerViewController: NSViewController, NSTableViewDataSource, NSTableViewDelegate, NSMenuDelegate {
     let connection: C64Connection
     private var ftpClient: FTPClient?
     private let tableView = NSTableView()
@@ -66,6 +66,21 @@ final class FileManagerViewController: NSViewController, NSTableViewDataSource, 
         tableView.doubleAction = #selector(doubleClickedRow)
         tableView.target = self
 
+        // Keyboard shortcuts
+        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, self.view.window?.firstResponder === self.tableView else { return event }
+            switch event.keyCode {
+            case 51: // Delete/Backspace
+                self.deleteSelected()
+                return nil
+            case 36: // Return/Enter — open folder or run file
+                self.doubleClickedRow()
+                return nil
+            default:
+                return event
+            }
+        }
+
         // Register for drag and drop from Finder
         tableView.registerForDraggedTypes([.fileURL])
         tableView.setDraggingSourceOperationMask(.copy, forLocal: false)
@@ -113,13 +128,9 @@ final class FileManagerViewController: NSViewController, NSTableViewDataSource, 
             progressIndicator.widthAnchor.constraint(greaterThanOrEqualToConstant: 100),
         ])
 
-        // Context menu
+        // Dynamic context menu
         let menu = NSMenu()
-        menu.addItem(withTitle: "Download", action: #selector(downloadSelected), keyEquivalent: "").target = self
-        menu.addItem(withTitle: "New Folder", action: #selector(createNewFolder), keyEquivalent: "").target = self
-        menu.addItem(.separator())
-        menu.addItem(withTitle: "Rename", action: #selector(renameSelected), keyEquivalent: "").target = self
-        menu.addItem(withTitle: "Delete", action: #selector(deleteSelected), keyEquivalent: "").target = self
+        menu.delegate = self
         tableView.menu = menu
 
         self.view = container
@@ -142,7 +153,7 @@ final class FileManagerViewController: NSViewController, NSTableViewDataSource, 
             do {
                 try await ftpClient?.connect()
                 statusLabel.stringValue = "Connected"
-                await navigateTo("/")
+                await navigateTo(connection.fileManagerCurrentPath)
             } catch {
                 statusLabel.stringValue = "FTP error: \(error.localizedDescription)"
             }
@@ -163,6 +174,7 @@ final class FileManagerViewController: NSViewController, NSTableViewDataSource, 
             let listing = try await client.listDirectory(path)
             print("[FileManager] Got \(listing.count) entries")
             currentPath = path
+            connection.fileManagerCurrentPath = path
             entries = listing
             tableView.reloadData()
             updatePathControl()
@@ -225,6 +237,26 @@ final class FileManagerViewController: NSViewController, NSTableViewDataSource, 
 
         if entry.isDirectory {
             Task { await navigateTo(entry.path) }
+            return
+        }
+
+        // Double-click runs the default action for the file type
+        let ext = entry.name.lowercased().components(separatedBy: ".").last ?? ""
+        let diskExtensions = ["d64", "d71", "d81", "g64", "g71"]
+        let textExtensions = ["txt", "nfo", "diz", "me", "doc", "readme", "1st"]
+
+        if textExtensions.contains(ext) || entry.name.lowercased().hasPrefix("readme") {
+            viewTextFile()
+        } else if diskExtensions.contains(ext) {
+            runDisk()
+        } else if ext == "prg" {
+            runPRG()
+        } else if ext == "sid" {
+            playSID()
+        } else if ext == "mod" {
+            playMOD()
+        } else if ext == "crt" {
+            runCRT()
         }
     }
 
@@ -346,6 +378,235 @@ final class FileManagerViewController: NSViewController, NSTableViewDataSource, 
         return true
     }
 
+    // MARK: - Dynamic Context Menu
+
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        menu.removeAllItems()
+
+        // Select the row under the cursor
+        let point = tableView.convert(NSEvent.mouseLocation, from: nil)
+        // Convert from screen coordinates
+        let localPoint = tableView.convert(tableView.window?.convertPoint(fromScreen: NSEvent.mouseLocation) ?? .zero, from: nil)
+        let clickedRow = tableView.row(at: localPoint)
+        if clickedRow >= 0 {
+            tableView.selectRowIndexes(IndexSet(integer: clickedRow), byExtendingSelection: false)
+        }
+
+        let entry = selectedEntry()
+        let ext = entry?.name.lowercased().components(separatedBy: ".").last ?? ""
+        let diskExtensions = ["d64", "d71", "d81", "g64", "g71"]
+
+        // File-type specific actions
+        if let entry, !entry.isDirectory {
+            let textExtensions = ["txt", "nfo", "diz", "me", "doc", "readme", "1st"]
+
+            if textExtensions.contains(ext) || entry.name.lowercased().hasPrefix("readme") {
+                menu.addItem(withTitle: "View", action: #selector(viewTextFile), keyEquivalent: "").target = self
+                menu.addItem(.separator())
+            } else if diskExtensions.contains(ext) {
+                menu.addItem(withTitle: "Run Disk", action: #selector(runDisk), keyEquivalent: "").target = self
+                menu.addItem(withTitle: "Mount on Drive A", action: #selector(mountDriveA), keyEquivalent: "").target = self
+                menu.addItem(withTitle: "Mount on Drive B", action: #selector(mountDriveB), keyEquivalent: "").target = self
+                menu.addItem(.separator())
+            } else if ext == "prg" {
+                menu.addItem(withTitle: "Run", action: #selector(runPRG), keyEquivalent: "").target = self
+                menu.addItem(withTitle: "Load", action: #selector(loadPRG), keyEquivalent: "").target = self
+                menu.addItem(.separator())
+            } else if ext == "sid" {
+                menu.addItem(withTitle: "Play", action: #selector(playSID), keyEquivalent: "").target = self
+                menu.addItem(.separator())
+            } else if ext == "mod" {
+                menu.addItem(withTitle: "Play", action: #selector(playMOD), keyEquivalent: "").target = self
+                menu.addItem(.separator())
+            } else if ext == "crt" {
+                menu.addItem(withTitle: "Run", action: #selector(runCRT), keyEquivalent: "").target = self
+                menu.addItem(.separator())
+            }
+
+            menu.addItem(withTitle: "Download", action: #selector(downloadSelected), keyEquivalent: "").target = self
+        }
+
+        // Common actions
+        menu.addItem(withTitle: "New Folder", action: #selector(createNewFolder), keyEquivalent: "").target = self
+        if entry != nil {
+            menu.addItem(.separator())
+            menu.addItem(withTitle: "Copy Path", action: #selector(copyPath), keyEquivalent: "").target = self
+            menu.addItem(withTitle: "Move To…", action: #selector(moveSelected), keyEquivalent: "").target = self
+            menu.addItem(withTitle: "Rename", action: #selector(renameSelected), keyEquivalent: "").target = self
+            menu.addItem(withTitle: "Delete", action: #selector(deleteSelected), keyEquivalent: "").target = self
+        }
+    }
+
+    // MARK: - Run/Mount Actions
+
+    @objc private func runDisk() {
+        guard let entry = selectedEntry(), let client = connection.apiClient else { return }
+        statusLabel.stringValue = "Mounting and running \(entry.name)..."
+        Task {
+            do {
+                try await client.mountDisk(drive: "a", imagePath: entry.path)
+
+                // Use two keyboard buffer writes:
+                // 1) LOAD"*",8,1 + RETURN (split into two parts since buffer is 10 bytes max)
+                //    First: LOAD"*",8 + RETURN (10 bytes) — this starts the load
+                let loadBytes: [UInt8] = [
+                    0x4C, 0x4F, 0x41, 0x44,  // LOAD
+                    0x22, 0x2A, 0x22, 0x2C,  // "*",
+                    0x38,                    // 8
+                    0x0D,                    // RETURN
+                ]
+                try await client.writeMem(address: 0x0277, data: Data(loadBytes))
+                try await client.writeMem(address: 0x00C6, data: Data([UInt8(loadBytes.count)]))
+
+                // 2) Wait for LOAD to complete, then send RUN + RETURN
+                try await Task.sleep(for: .seconds(3))
+                let runBytes: [UInt8] = [0x52, 0x55, 0x4E, 0x0D]  // RUN + RETURN
+                try await client.writeMem(address: 0x0277, data: Data(runBytes))
+                try await client.writeMem(address: 0x00C6, data: Data([UInt8(runBytes.count)]))
+
+                statusLabel.stringValue = "Loading \(entry.name)"
+            } catch {
+                statusLabel.stringValue = "Error: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    @objc private func mountDriveA() {
+        guard let entry = selectedEntry(), let client = connection.apiClient else { return }
+        Task {
+            do {
+                try await client.mountDisk(drive: "a", imagePath: entry.path)
+                statusLabel.stringValue = "Mounted \(entry.name) on Drive A"
+            } catch {
+                statusLabel.stringValue = "Error: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    @objc private func mountDriveB() {
+        guard let entry = selectedEntry(), let client = connection.apiClient else { return }
+        Task {
+            do {
+                try await client.mountDisk(drive: "b", imagePath: entry.path)
+                statusLabel.stringValue = "Mounted \(entry.name) on Drive B"
+            } catch {
+                statusLabel.stringValue = "Error: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    @objc private func runPRG() {
+        guard let entry = selectedEntry(), let client = connection.apiClient else { return }
+        Task {
+            do {
+                try await client.runPRGByPath(entry.path)
+                statusLabel.stringValue = "Running \(entry.name)"
+            } catch {
+                statusLabel.stringValue = "Error: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    @objc private func loadPRG() {
+        guard let entry = selectedEntry(), let client = connection.apiClient else { return }
+        Task {
+            do {
+                try await client.loadPRGByPath(entry.path)
+                statusLabel.stringValue = "Loaded \(entry.name)"
+            } catch {
+                statusLabel.stringValue = "Error: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    @objc private func playSID() {
+        guard let entry = selectedEntry(), let client = connection.apiClient else { return }
+        Task {
+            do {
+                try await client.playSIDByPath(entry.path)
+                statusLabel.stringValue = "Playing \(entry.name)"
+            } catch {
+                statusLabel.stringValue = "Error: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    @objc private func playMOD() {
+        guard let entry = selectedEntry(), let client = connection.apiClient else { return }
+        Task {
+            do {
+                try await client.playMODByPath(entry.path)
+                statusLabel.stringValue = "Playing \(entry.name)"
+            } catch {
+                statusLabel.stringValue = "Error: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    @objc private func runCRT() {
+        guard let entry = selectedEntry(), let client = connection.apiClient else { return }
+        Task {
+            do {
+                try await client.runCRTByPath(entry.path)
+                statusLabel.stringValue = "Running \(entry.name)"
+            } catch {
+                statusLabel.stringValue = "Error: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    // MARK: - Text File Viewer
+
+    @objc private func viewTextFile() {
+        guard let entry = selectedEntry(), let client = ftpClient else { return }
+        statusLabel.stringValue = "Downloading \(entry.name)..."
+
+        Task {
+            do {
+                // Download to temp file
+                let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(entry.name)
+                try await client.downloadFile(remotePath: entry.path, localURL: tempURL)
+
+                // Read content — try UTF-8, fall back to Latin-1
+                let content: String
+                if let utf8 = try? String(contentsOf: tempURL, encoding: .utf8) {
+                    content = utf8
+                } else if let latin1 = try? String(contentsOf: tempURL, encoding: .isoLatin1) {
+                    content = latin1
+                } else {
+                    content = "(Unable to read file)"
+                }
+
+                try? FileManager.default.removeItem(at: tempURL)
+
+                // Show in a new window
+                let window = NSWindow(
+                    contentRect: NSRect(x: 0, y: 0, width: 600, height: 500),
+                    styleMask: [.titled, .closable, .resizable, .miniaturizable],
+                    backing: .buffered,
+                    defer: false
+                )
+                window.title = entry.name
+                window.center()
+                window.isReleasedWhenClosed = false
+
+                let scrollView = NSTextView.scrollableTextView()
+                let textView = scrollView.documentView as! NSTextView
+                textView.isEditable = false
+                textView.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+                textView.textContainerInset = NSSize(width: 10, height: 10)
+                textView.string = content
+
+                window.contentView = scrollView
+                window.makeKeyAndOrderFront(nil)
+
+                statusLabel.stringValue = "Viewing \(entry.name)"
+            } catch {
+                statusLabel.stringValue = "Error: \(error.localizedDescription)"
+            }
+        }
+    }
+
     // MARK: - Upload
 
     @objc func uploadFiles() {
@@ -452,6 +713,48 @@ final class FileManagerViewController: NSViewController, NSTableViewDataSource, 
                 } catch {
                     self.statusLabel.stringValue = "Error: \(error.localizedDescription)"
                 }
+            }
+        }
+    }
+
+    @objc private func copyPath() {
+        guard let entry = selectedEntry() else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(entry.path, forType: .string)
+        statusLabel.stringValue = "Copied: \(entry.path)"
+    }
+
+    @objc private func moveSelected() {
+        let entriesToMove = selectedEntries()
+        guard !entriesToMove.isEmpty else { return }
+
+        let alert = NSAlert()
+        alert.messageText = "Move \(entriesToMove.count == 1 ? entriesToMove[0].name : "\(entriesToMove.count) items")"
+        alert.informativeText = "Enter the destination directory path:"
+        alert.addButton(withTitle: "Move")
+        alert.addButton(withTitle: "Cancel")
+        let pathField = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        // Pre-fill with clipboard if it looks like a device path, otherwise current path
+        let clipboard = NSPasteboard.general.string(forType: .string) ?? ""
+        pathField.stringValue = clipboard.hasPrefix("/") ? clipboard : currentPath
+        pathField.placeholderString = "/path/to/destination"
+        alert.accessoryView = pathField
+        guard let window = view.window else { return }
+        alert.beginSheetModal(for: window) { [weak self] response in
+            guard let self, response == .alertFirstButtonReturn else { return }
+            let destPath = pathField.stringValue.trimmingCharacters(in: .whitespaces)
+            guard !destPath.isEmpty else { return }
+
+            Task {
+                for entry in entriesToMove {
+                    let newPath = destPath.hasSuffix("/") ? destPath + entry.name : destPath + "/" + entry.name
+                    do {
+                        try await self.ftpClient?.rename(from: entry.path, to: newPath)
+                    } catch {
+                        self.statusLabel.stringValue = "Error moving \(entry.name): \(error.localizedDescription)"
+                    }
+                }
+                await self.navigateTo(self.currentPath)
             }
         }
     }

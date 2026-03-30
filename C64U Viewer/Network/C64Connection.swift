@@ -43,6 +43,7 @@ final class C64Connection {
     // Tool panel state
     var selectedSidebarItem: SidebarItem? = nil
     var basicScratchpadCode: String = BASICSamples.helloWorld
+    var fileManagerCurrentPath: String = "/"
     var basicScratchpadFileURL: URL? = nil
     var basicScratchpadSavedContent: String = BASICSamples.helloWorld
 

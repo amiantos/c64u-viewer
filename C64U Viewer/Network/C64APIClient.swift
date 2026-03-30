@@ -64,6 +64,34 @@ final class C64APIClient: Sendable {
         try await post("/v1/runners:run_crt", body: data)
     }
 
+    // MARK: - Runners (by device path)
+
+    func runPRGByPath(_ path: String) async throws {
+        try await put("/v1/runners:run_prg?file=\(path.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? path)")
+    }
+
+    func loadPRGByPath(_ path: String) async throws {
+        try await put("/v1/runners:load_prg?file=\(path.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? path)")
+    }
+
+    func playSIDByPath(_ path: String) async throws {
+        try await put("/v1/runners:sidplay?file=\(path.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? path)")
+    }
+
+    func playMODByPath(_ path: String) async throws {
+        try await put("/v1/runners:modplay?file=\(path.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? path)")
+    }
+
+    func runCRTByPath(_ path: String) async throws {
+        try await put("/v1/runners:run_crt?file=\(path.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? path)")
+    }
+
+    // MARK: - Drives
+
+    func mountDisk(drive: String, imagePath: String) async throws {
+        try await put("/v1/drives/\(drive):mount?image=\(imagePath.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? imagePath)")
+    }
+
     // MARK: - Machine Control
 
     func machineReset() async throws {
