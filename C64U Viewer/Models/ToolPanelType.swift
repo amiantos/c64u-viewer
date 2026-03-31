@@ -75,6 +75,6 @@ struct SidebarSection {
 
 let sidebarSections: [SidebarSection] = [
     SidebarSection(title: "Tools", items: [.basicScratchpad, .fileManager]),
-    SidebarSection(title: "Developer", items: [.memoryBrowser, .debugStreamViewer]),
+    SidebarSection(title: "Developer", items: [.memoryBrowser]),
     SidebarSection(title: "Settings", items: [.system, .displayAndAudio]),
 ]
