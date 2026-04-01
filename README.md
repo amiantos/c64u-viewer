@@ -42,6 +42,8 @@ Open `C64 Ultimate Toolbox.xcodeproj` in Xcode and build. No package dependencie
 2. Launch the app and click **Listen** under Viewer Mode
 3. Click the video to access audio and CRT filter controls
 
+⚠️ For more detailed setup help check this: [Quick Start Guide](https://discuss.bradroot.me/t/c64-ultimate-toolbox-quick-start-guide/80)
+
 ### Toolbox Mode
 
 1. Enable **FTP File Service** and **Web Remote Control Service** in your C64U's Network Services menu
