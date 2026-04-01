@@ -211,7 +211,7 @@ final class FileManagerViewController: NSViewController, NSTableViewDataSource, 
             statusLabel.stringValue = "\(entries.count) item\(entries.count == 1 ? "" : "s")"
         } catch {
             print("[FileManager] Error: \(error)")
-            showError("Error", details: error.localizedDescription)
+            statusLabel.stringValue = "Unable to navigate to \(path)"
         }
     }
 

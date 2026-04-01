@@ -109,6 +109,11 @@ actor FTPClient {
         let pwdResp = try await sendCommand("PWD")
         let currentPath = parsePWDResponse(pwdResp.message)
 
+        // Validate the server actually changed to the requested directory
+        if currentPath != path {
+            throw FTPError.commandFailed(550, "Unable to navigate to \(path)")
+        }
+
         // Open data connection
         let dataConnection = NWConnection(
             host: NWEndpoint.Host(dataHost),
