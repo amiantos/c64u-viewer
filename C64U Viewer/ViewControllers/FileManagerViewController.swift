@@ -467,6 +467,7 @@ final class FileManagerViewController: NSViewController, NSTableViewDataSource, 
 
     @objc private func runDisk() {
         guard let entry = selectedEntry(), let client = connection.apiClient else { return }
+        Log.info("runDisk: '\(entry.name)' path='\(entry.path)'")
         statusLabel.stringValue = "Mounting and running \(entry.name)..."
         Task {
             do {
@@ -493,6 +494,7 @@ final class FileManagerViewController: NSViewController, NSTableViewDataSource, 
                 statusLabel.stringValue = "Loading \(entry.name)"
 
             } catch {
+                Log.error("runDisk failed: \(error.localizedDescription)")
                 showError("Error", details: error.localizedDescription)
             }
         }
@@ -500,12 +502,14 @@ final class FileManagerViewController: NSViewController, NSTableViewDataSource, 
 
     @objc private func mountDriveA() {
         guard let entry = selectedEntry(), let client = connection.apiClient else { return }
+        Log.info("mountDriveA: '\(entry.name)' path='\(entry.path)'")
         Task {
             do {
                 try await client.mountDisk(drive: "a", imagePath: entry.path)
                 statusLabel.stringValue = "Mounted \(entry.name) on Drive A"
 
             } catch {
+                Log.error("mountDriveA failed: \(error.localizedDescription)")
                 showError("Error", details: error.localizedDescription)
             }
         }
@@ -513,12 +517,14 @@ final class FileManagerViewController: NSViewController, NSTableViewDataSource, 
 
     @objc private func mountDriveB() {
         guard let entry = selectedEntry(), let client = connection.apiClient else { return }
+        Log.info("mountDriveB: '\(entry.name)' path='\(entry.path)'")
         Task {
             do {
                 try await client.mountDisk(drive: "b", imagePath: entry.path)
                 statusLabel.stringValue = "Mounted \(entry.name) on Drive B"
 
             } catch {
+                Log.error("mountDriveB failed: \(error.localizedDescription)")
                 showError("Error", details: error.localizedDescription)
             }
         }
@@ -526,11 +532,13 @@ final class FileManagerViewController: NSViewController, NSTableViewDataSource, 
 
     @objc private func runPRG() {
         guard let entry = selectedEntry(), let client = connection.apiClient else { return }
+        Log.info("runPRG: '\(entry.name)' path='\(entry.path)'")
         Task {
             do {
                 try await client.runPRGByPath(entry.path)
                 statusLabel.stringValue = "Running \(entry.name)"
             } catch {
+                Log.error("runPRG failed: \(error.localizedDescription)")
                 showError("Error", details: error.localizedDescription)
             }
         }
@@ -538,11 +546,13 @@ final class FileManagerViewController: NSViewController, NSTableViewDataSource, 
 
     @objc private func loadPRG() {
         guard let entry = selectedEntry(), let client = connection.apiClient else { return }
+        Log.info("loadPRG: '\(entry.name)' path='\(entry.path)'")
         Task {
             do {
                 try await client.loadPRGByPath(entry.path)
                 statusLabel.stringValue = "Loaded \(entry.name)"
             } catch {
+                Log.error("loadPRG failed: \(error.localizedDescription)")
                 showError("Error", details: error.localizedDescription)
             }
         }
@@ -550,11 +560,13 @@ final class FileManagerViewController: NSViewController, NSTableViewDataSource, 
 
     @objc private func playSID() {
         guard let entry = selectedEntry(), let client = connection.apiClient else { return }
+        Log.info("playSID: '\(entry.name)' path='\(entry.path)'")
         Task {
             do {
                 try await client.playSIDByPath(entry.path)
                 statusLabel.stringValue = "Playing \(entry.name)"
             } catch {
+                Log.error("playSID failed: \(error.localizedDescription)")
                 showError("Error", details: error.localizedDescription)
             }
         }
@@ -562,11 +574,13 @@ final class FileManagerViewController: NSViewController, NSTableViewDataSource, 
 
     @objc private func playMOD() {
         guard let entry = selectedEntry(), let client = connection.apiClient else { return }
+        Log.info("playMOD: '\(entry.name)' path='\(entry.path)'")
         Task {
             do {
                 try await client.playMODByPath(entry.path)
                 statusLabel.stringValue = "Playing \(entry.name)"
             } catch {
+                Log.error("playMOD failed: \(error.localizedDescription)")
                 showError("Error", details: error.localizedDescription)
             }
         }
@@ -574,11 +588,13 @@ final class FileManagerViewController: NSViewController, NSTableViewDataSource, 
 
     @objc private func runCRT() {
         guard let entry = selectedEntry(), let client = connection.apiClient else { return }
+        Log.info("runCRT: '\(entry.name)' path='\(entry.path)'")
         Task {
             do {
                 try await client.runCRTByPath(entry.path)
                 statusLabel.stringValue = "Running \(entry.name)"
             } catch {
+                Log.error("runCRT failed: \(error.localizedDescription)")
                 showError("Error", details: error.localizedDescription)
             }
         }

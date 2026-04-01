@@ -25,6 +25,18 @@ final class C64APIClient: Sendable {
     let baseURL: String
     let password: String?
 
+    /// Character set for encoding query parameter values — matches JS encodeURIComponent behavior.
+    /// Removes /:&=+ from urlQueryAllowed so forward slashes in file paths get encoded as %2F.
+    private static let queryValueAllowed: CharacterSet = {
+        var cs = CharacterSet.urlQueryAllowed
+        cs.remove(charactersIn: "/:&=+")
+        return cs
+    }()
+
+    private static func encodeQueryValue(_ value: String) -> String {
+        value.addingPercentEncoding(withAllowedCharacters: queryValueAllowed) ?? value
+    }
+
     init(host: String, password: String? = nil) {
         self.baseURL = "http://\(host)"
         self.password = password?.isEmpty == true ? nil : password
@@ -67,23 +79,33 @@ final class C64APIClient: Sendable {
     // MARK: - Runners (by device path)
 
     func runPRGByPath(_ path: String) async throws {
-        try await put("/v1/runners:run_prg?file=\(path.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? path)")
+        let encoded = Self.encodeQueryValue(path)
+        Log.info("runPRGByPath: '\(path)' -> '\(encoded)'")
+        try await put("/v1/runners:run_prg?file=\(encoded)")
     }
 
     func loadPRGByPath(_ path: String) async throws {
-        try await put("/v1/runners:load_prg?file=\(path.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? path)")
+        let encoded = Self.encodeQueryValue(path)
+        Log.info("loadPRGByPath: '\(path)' -> '\(encoded)'")
+        try await put("/v1/runners:load_prg?file=\(encoded)")
     }
 
     func playSIDByPath(_ path: String) async throws {
-        try await put("/v1/runners:sidplay?file=\(path.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? path)")
+        let encoded = Self.encodeQueryValue(path)
+        Log.info("playSIDByPath: '\(path)' -> '\(encoded)'")
+        try await put("/v1/runners:sidplay?file=\(encoded)")
     }
 
     func playMODByPath(_ path: String) async throws {
-        try await put("/v1/runners:modplay?file=\(path.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? path)")
+        let encoded = Self.encodeQueryValue(path)
+        Log.info("playMODByPath: '\(path)' -> '\(encoded)'")
+        try await put("/v1/runners:modplay?file=\(encoded)")
     }
 
     func runCRTByPath(_ path: String) async throws {
-        try await put("/v1/runners:run_crt?file=\(path.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? path)")
+        let encoded = Self.encodeQueryValue(path)
+        Log.info("runCRTByPath: '\(path)' -> '\(encoded)'")
+        try await put("/v1/runners:run_crt?file=\(encoded)")
     }
 
     // MARK: - Drives
@@ -91,7 +113,7 @@ final class C64APIClient: Sendable {
     func fetchDrives() async throws -> [String: [String: Any]] {
         let request = makeRequest("/v1/drives", method: "GET")
         let (data, response) = try await URLSession.shared.data(for: request)
-        try validateResponse(response)
+        try validateResponse(response, data: data)
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let drives = json["drives"] as? [[String: Any]] else {
             return [:]
@@ -109,7 +131,9 @@ final class C64APIClient: Sendable {
     }
 
     func mountDisk(drive: String, imagePath: String) async throws {
-        try await put("/v1/drives/\(drive):mount?image=\(imagePath.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? imagePath)")
+        let encoded = Self.encodeQueryValue(imagePath)
+        Log.info("mountDisk: drive=\(drive) path='\(imagePath)' -> '\(encoded)'")
+        try await put("/v1/drives/\(drive):mount?image=\(encoded)")
     }
 
     func removeDisk(drive: String) async throws {
@@ -125,7 +149,7 @@ final class C64APIClient: Sendable {
     func fetchConfigCategories() async throws -> [String] {
         let request = makeRequest("/v1/configs", method: "GET")
         let (data, response) = try await URLSession.shared.data(for: request)
-        try validateResponse(response)
+        try validateResponse(response, data: data)
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let categories = json["categories"] as? [String] else { return [] }
         return categories
@@ -135,7 +159,7 @@ final class C64APIClient: Sendable {
         let encoded = category.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? category
         let request = makeRequest("/v1/configs/\(encoded)", method: "GET")
         let (data, response) = try await URLSession.shared.data(for: request)
-        try validateResponse(response)
+        try validateResponse(response, data: data)
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let items = json[category] as? [String: Any] else { return [:] }
         return items
@@ -144,7 +168,7 @@ final class C64APIClient: Sendable {
     func setConfigItem(_ category: String, item: String, value: String) async throws {
         let catEncoded = category.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? category
         let itemEncoded = item.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? item
-        let valEncoded = value.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? value
+        let valEncoded = Self.encodeQueryValue(value)
         try await put("/v1/configs/\(catEncoded)/\(itemEncoded)?value=\(valEncoded)")
     }
 
@@ -188,7 +212,7 @@ final class C64APIClient: Sendable {
         let hex = String(format: "%04X", address)
         let request = makeRequest("/v1/machine:readmem?address=\(hex)&length=\(length)", method: "GET")
         let (data, response) = try await URLSession.shared.data(for: request)
-        try validateResponse(response)
+        try validateResponse(response, data: data)
         return data
     }
 
@@ -208,7 +232,7 @@ final class C64APIClient: Sendable {
     private func get<T: Decodable>(_ path: String) async throws -> T {
         let request = makeRequest(path, method: "GET")
         let (data, response) = try await URLSession.shared.data(for: request)
-        try validateResponse(response)
+        try validateResponse(response, data: data)
         return try JSONDecoder().decode(T.self, from: data)
     }
 
@@ -216,7 +240,7 @@ final class C64APIClient: Sendable {
     private func put(_ path: String) async throws -> Data {
         let request = makeRequest(path, method: "PUT")
         let (data, response) = try await URLSession.shared.data(for: request)
-        try validateResponse(response)
+        try validateResponse(response, data: data)
         return data
     }
 
@@ -226,12 +250,14 @@ final class C64APIClient: Sendable {
         request.httpBody = body
         request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
         let (data, response) = try await URLSession.shared.data(for: request)
-        try validateResponse(response)
+        try validateResponse(response, data: data)
         return data
     }
 
     private func makeRequest(_ path: String, method: String) -> URLRequest {
-        var request = URLRequest(url: URL(string: "\(baseURL)\(path)")!)
+        let urlString = "\(baseURL)\(path)"
+        Log.debug("[\(method)] \(urlString)")
+        var request = URLRequest(url: URL(string: urlString)!)
         request.httpMethod = method
         if let password {
             request.setValue(password, forHTTPHeaderField: "X-Password")
@@ -239,11 +265,14 @@ final class C64APIClient: Sendable {
         return request
     }
 
-    private func validateResponse(_ response: URLResponse) throws {
+    private func validateResponse(_ response: URLResponse, data: Data? = nil) throws {
         guard let http = response as? HTTPURLResponse else {
+            Log.error("Invalid response (not HTTP)")
             throw C64APIError.invalidResponse
         }
         guard (200...299).contains(http.statusCode) else {
+            let body = data.flatMap { String(data: $0, encoding: .utf8) } ?? ""
+            Log.error("HTTP \(http.statusCode): \(http.url?.absoluteString ?? "?") — \(body)")
             throw C64APIError.httpError(http.statusCode)
         }
     }

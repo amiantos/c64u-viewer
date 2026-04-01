@@ -147,7 +147,7 @@ final class C64Connection {
             do {
                 let info = try await client.fetchInfo()
                 self.deviceInfo = info
-                print("C64U device: \(info.product) v\(info.firmwareVersion) (\(info.hostname))")
+                Log.info("Device: \(info.product) v\(info.firmwareVersion) (\(info.hostname))")
 
                 // Connection verified — start everything
                 keyboardForwarder = C64KeyboardForwarder(client: client)
@@ -165,13 +165,13 @@ final class C64Connection {
                 } else {
                     self.connectionError = error.localizedDescription
                 }
-                print("C64U API error: \(error.localizedDescription)")
+                Log.error("API error: \(error.localizedDescription)")
                 apiClient = nil
                 connectionMode = nil
                 completion?(false)
             } catch {
                 self.connectionError = error.localizedDescription
-                print("C64U API error: \(error.localizedDescription)")
+                Log.error("API error: \(error.localizedDescription)")
                 apiClient = nil
                 connectionMode = nil
                 completion?(false)
@@ -239,7 +239,7 @@ final class C64Connection {
                     completion?(false)
                 }
             } catch {
-                print("C64U stream start error: \(error.localizedDescription)")
+                Log.error("Stream start error: \(error.localizedDescription)")
                 self.connectionError = error.localizedDescription
                 completion?(false)
             }
@@ -260,7 +260,7 @@ final class C64Connection {
                 self.allowSleep()
                 completion?(true)
             } catch {
-                print("C64U stream stop error: \(error.localizedDescription)")
+                Log.error("Stream stop error: \(error.localizedDescription)")
                 self.connectionError = error.localizedDescription
                 completion?(false)
             }
@@ -278,7 +278,7 @@ final class C64Connection {
                 case .crt: try await client.runCRT(data: data)
                 }
             } catch {
-                print("C64U runner error: \(error.localizedDescription)")
+                Log.error("Runner error: \(error.localizedDescription)")
                 self.connectionError = error.localizedDescription
             }
         }
@@ -311,7 +311,7 @@ final class C64Connection {
                     disconnect()
                 }
             } catch {
-                print("C64U machine error: \(error.localizedDescription)")
+                Log.error("Machine action error: \(error.localizedDescription)")
                 self.connectionError = error.localizedDescription
             }
         }
@@ -428,7 +428,7 @@ final class C64Connection {
 
         if let chosen {
             let isWifi = chosen.interface == wifiInterface
-            print("Using \(isWifi ? "WiFi" : "wired") interface \(chosen.interface): \(chosen.address)")
+            Log.info("Using \(isWifi ? "WiFi" : "wired") interface \(chosen.interface): \(chosen.address)")
             return chosen.address
         }
         return nil
