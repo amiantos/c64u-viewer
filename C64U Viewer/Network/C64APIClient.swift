@@ -172,12 +172,34 @@ final class C64APIClient: Sendable {
         try await put("/v1/configs/\(catEncoded)/\(itemEncoded)?value=\(valEncoded)")
     }
 
+    func fetchConfigItemDetails(_ category: String, item: String) async throws -> [String: Any] {
+        let catEncoded = category.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? category
+        let itemEncoded = item.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? item
+        let request = makeRequest("/v1/configs/\(catEncoded)/\(itemEncoded)", method: "GET")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try validateResponse(response, data: data)
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let categoryData = json[category] as? [String: Any],
+              let itemData = categoryData[item] as? [String: Any] else { return [:] }
+        return itemData
+    }
+
     func saveConfigToFlash() async throws {
         try await put("/v1/configs:save_to_flash")
     }
 
     func loadConfigFromFlash() async throws {
         try await put("/v1/configs:load_from_flash")
+    }
+
+    func resetConfigToDefault() async throws {
+        let request = makeRequest("/v1/configs:reset_to_default", method: "PUT")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        // Device may reboot — treat 502 as success
+        if let http = response as? HTTPURLResponse, http.statusCode == 502 {
+            return
+        }
+        try validateResponse(response, data: data)
     }
 
     // MARK: - Machine Control

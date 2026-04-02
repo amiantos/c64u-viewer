@@ -176,7 +176,7 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
             items.append(contentsOf: [
                 .toggleSidebar,
                 .sidebarTrackingSeparator,
-                .startStopStreams, .runFile, .keyboard,
+                .runFile, .keyboard,
                 .flexibleSpace,
                 .pauseResume, .resetMachine, .rebootMachine, .powerOff,
                 .flexibleSpace,
@@ -204,7 +204,7 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
         [
             .toggleSidebar, .sidebarTrackingSeparator,
-            .startStopStreams, .runFile, .keyboard,
+            .runFile, .keyboard,
             .flexibleSpace,
             .pauseResume, .resetMachine, .rebootMachine, .powerOff,
             .toggleDebugPanel, .takeScreenshot, .toggleRecording,
@@ -217,12 +217,6 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
         case .inspectorTrackingSeparator:
             let dividerIndex = splitViewController.splitViewItems.count - 2
             return NSTrackingSeparatorToolbarItem(identifier: itemIdentifier, splitView: splitViewController.splitView, dividerIndex: max(0, dividerIndex))
-        case .startStopStreams:
-            if connection.streamsActive {
-                return makeToolbarItem(itemIdentifier, label: "Stop Streams", icon: "stop.circle.fill", action: #selector(stopStreams))
-            } else {
-                return makeToolbarItem(itemIdentifier, label: "Start Streams", icon: "play.circle.fill", action: #selector(startStreams))
-            }
         case .runFile:
             return makeToolbarItem(itemIdentifier, label: "Run File", icon: "doc.fill.badge.plus", action: #selector(runFileTapped))
         case .keyboard:
@@ -280,18 +274,6 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
     }
 
     // MARK: - Toolbar Actions
-
-    @objc private func startStreams() {
-        connection.startStreams { [weak self] _ in
-            self?.refreshToolbarItem(.startStopStreams)
-        }
-    }
-
-    @objc private func stopStreams() {
-        connection.stopStreams { [weak self] _ in
-            self?.refreshToolbarItem(.startStopStreams)
-        }
-    }
 
     @objc private func runFileTapped() {
         let panel = NSOpenPanel()
@@ -459,7 +441,6 @@ extension DeviceWindowController: NSWindowDelegate {
 // MARK: - Toolbar Item Identifiers
 
 extension NSToolbarItem.Identifier {
-    static let startStopStreams = NSToolbarItem.Identifier("startStopStreams")
     static let runFile = NSToolbarItem.Identifier("runFile")
     static let keyboard = NSToolbarItem.Identifier("keyboard")
     static let resetMachine = NSToolbarItem.Identifier("resetMachine")

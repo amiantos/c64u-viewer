@@ -560,6 +560,7 @@ final class FileManagerViewController: NSViewController, NSOutlineViewDataSource
         Task {
             do {
                 try await client.mountDisk(drive: "a", imagePath: entry.path)
+                NotificationCenter.default.post(name: .driveStatusDidChange, object: nil)
 
                 let loadBytes: [UInt8] = [
                     0x4C, 0x4F, 0x41, 0x44,  // LOAD
@@ -590,6 +591,7 @@ final class FileManagerViewController: NSViewController, NSOutlineViewDataSource
         Task {
             do {
                 try await client.mountDisk(drive: "a", imagePath: entry.path)
+                NotificationCenter.default.post(name: .driveStatusDidChange, object: nil)
                 statusLabel.stringValue = "Mounted \(entry.name) on Drive A"
 
             } catch {
@@ -605,6 +607,7 @@ final class FileManagerViewController: NSViewController, NSOutlineViewDataSource
         Task {
             do {
                 try await client.mountDisk(drive: "b", imagePath: entry.path)
+                NotificationCenter.default.post(name: .driveStatusDidChange, object: nil)
                 statusLabel.stringValue = "Mounted \(entry.name) on Drive B"
 
             } catch {
