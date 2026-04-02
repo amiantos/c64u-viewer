@@ -178,9 +178,10 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
             items.append(contentsOf: [
                 .toggleSidebar,
                 .sidebarTrackingSeparator,
-                .runFile, .keyboard,
                 .flexibleSpace,
-                .pauseResume, .resetMachine, .rebootMachine, .powerOff,
+                .runFile, .pauseResume, .resetMachine, .rebootMachine, .powerOff,
+                .flexibleSpace,
+                .keyboard,
                 .flexibleSpace,
                 .takeScreenshot, .toggleRecording,
                 .flexibleSpace,
@@ -223,7 +224,7 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
             return makeToolbarItem(itemIdentifier, label: "Run File", icon: "doc.fill.badge.plus", action: #selector(runFileTapped))
         case .keyboard:
             let isOn = connection.keyboardForwarder?.isEnabled == true
-            return makeToolbarItem(itemIdentifier, label: "Keyboard", icon: isOn ? "keyboard.fill" : "keyboard", action: #selector(toggleKeyboard))
+            return makeToolbarItem(itemIdentifier, label: "Send Keyboard", icon: isOn ? "keyboard.fill" : "keyboard", action: #selector(toggleKeyboard))
         case .resetMachine:
             return makeToolbarItem(itemIdentifier, label: "Reset", icon: "arrow.counterclockwise", action: #selector(resetTapped))
         case .rebootMachine:
@@ -238,7 +239,7 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
             }
         case .toggleDebugPanel:
             let isVisible = debugPanelItem?.isCollapsed == false
-            return makeToolbarItem(itemIdentifier, label: "Debug", icon: isVisible ? "rectangle.bottomhalf.filled" : "rectangle.bottomhalf.inset.filled", action: #selector(toggleDebugPanel))
+            return makeToolbarItem(itemIdentifier, label: "Debug", icon: isVisible ? "ladybug.fill" : "ladybug", action: #selector(toggleDebugPanel))
         case .toggleInspector:
             let isVisible = inspectorItem?.isCollapsed == false
             return makeToolbarItem(itemIdentifier, label: "Inspector", icon: isVisible ? "sidebar.trailing" : "sidebar.trailing", action: #selector(toggleInspector))
@@ -246,9 +247,9 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
             return makeToolbarItem(itemIdentifier, label: "Screenshot", icon: "camera.fill", action: #selector(takeScreenshot))
         case .toggleRecording:
             if connection.isRecording {
-                return makeToolbarItem(itemIdentifier, label: "Stop Recording", icon: "record.circle.fill", action: #selector(toggleRecording))
+                return makeToolbarItem(itemIdentifier, label: "Stop Recording", icon: "stop.circle.fill", action: #selector(toggleRecording))
             } else {
-                return makeToolbarItem(itemIdentifier, label: "Record", icon: "record.circle", action: #selector(toggleRecording))
+                return makeToolbarItem(itemIdentifier, label: "Record", icon: "inset.filled.rectangle.badge.record", action: #selector(toggleRecording))
             }
         default:
             return nil
