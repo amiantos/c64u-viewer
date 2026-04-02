@@ -179,7 +179,15 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
                 .flexibleSpace,
                 .pauseResume, .resetMachine, .rebootMachine, .powerOff,
                 .flexibleSpace,
+                .takeScreenshot, .toggleRecording,
+                .flexibleSpace,
                 .toggleDebugPanel,
+            ])
+        }
+
+        if connection.connectionMode != .toolbox {
+            items.append(contentsOf: [
+                .takeScreenshot, .toggleRecording,
             ])
         }
 
@@ -198,7 +206,8 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
             .startStopStreams, .runFile, .keyboard,
             .flexibleSpace,
             .pauseResume, .resetMachine, .rebootMachine, .powerOff,
-            .toggleDebugPanel, .inspectorTrackingSeparator, .toggleInspector,
+            .toggleDebugPanel, .takeScreenshot, .toggleRecording,
+            .inspectorTrackingSeparator, .toggleInspector,
         ]
     }
 
@@ -236,6 +245,14 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
         case .toggleInspector:
             let isVisible = inspectorItem?.isCollapsed == false
             return makeToolbarItem(itemIdentifier, label: "Inspector", icon: isVisible ? "sidebar.trailing" : "sidebar.trailing", action: #selector(toggleInspector))
+        case .takeScreenshot:
+            return makeToolbarItem(itemIdentifier, label: "Screenshot", icon: "camera.fill", action: #selector(takeScreenshot))
+        case .toggleRecording:
+            if connection.isRecording {
+                return makeToolbarItem(itemIdentifier, label: "Stop Recording", icon: "record.circle.fill", action: #selector(toggleRecording))
+            } else {
+                return makeToolbarItem(itemIdentifier, label: "Record", icon: "record.circle", action: #selector(toggleRecording))
+            }
         default:
             return nil
         }
@@ -393,6 +410,7 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
 
     @objc func toggleRecording() {
         connection.toggleRecording()
+        refreshToolbarItem(.toggleRecording)
     }
 
     // MARK: - Split View Resize Tracking
@@ -450,4 +468,6 @@ extension NSToolbarItem.Identifier {
     static let toggleDebugPanel = NSToolbarItem.Identifier("toggleDebugPanel")
     static let toggleInspector = NSToolbarItem.Identifier("toggleInspector")
     static let inspectorTrackingSeparator = NSToolbarItem.Identifier("inspectorTrackingSeparator")
+    static let takeScreenshot = NSToolbarItem.Identifier("takeScreenshot")
+    static let toggleRecording = NSToolbarItem.Identifier("toggleRecording")
 }
