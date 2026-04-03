@@ -170,6 +170,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, DeviceWindowController
 
 extension AppDelegate: OpenDeviceWindowControllerDelegate {
     func openDeviceWindowController(_ controller: OpenDeviceWindowController, didConnectWith connection: C64Connection) {
+        controller.window?.close()
+        openDeviceWindowController = nil
         openDeviceWindow(connection: connection)
     }
 }

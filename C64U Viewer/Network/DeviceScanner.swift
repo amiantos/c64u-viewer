@@ -73,6 +73,15 @@ final class DeviceScanner {
         }
     }
 
+    func scanAll(completion: @escaping ([DiscoveredDevice]) -> Void) {
+        var results: [DiscoveredDevice] = []
+        scan(onFound: { device in
+            results.append(device)
+        }, onComplete: {
+            completion(results)
+        })
+    }
+
     func stop() {
         isScanning = false
         for task in scanTasks {
