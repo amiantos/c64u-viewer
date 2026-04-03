@@ -45,30 +45,7 @@ Open `C64 Ultimate Toolbox.xcodeproj` in Xcode and build. No package dependencie
 
 ## Usage
 
-### Viewer Mode
-
-1. Start the VIC Stream and Audio Stream on your C64U, pointed at your Mac's IP address
-2. Launch the app and click **Listen** under Viewer Mode
-3. Use the inspector panel to adjust CRT effects, volume, and audio balance
-
 ⚠️ For more detailed setup help check this: [Quick Start Guide](https://discuss.bradroot.me/t/c64-ultimate-toolbox-quick-start-guide/80)
-
-### Toolbox Mode
-
-1. Enable **FTP File Service** and **Web Remote Control Service** in your C64U's Network Services menu
-2. Launch the app — your device should appear automatically under Discovered Devices
-3. Click your device to connect — streams start automatically
-4. Use the sidebar file manager to browse and transfer files, and the toolbar for device control
-
-### Keyboard Shortcuts
-
-| Action | Shortcut |
-|---|---|
-| Disconnect | ⌘D |
-| Volume Up/Down | ⌘↑ / ⌘↓ |
-| Mute | ⇧⌘M |
-| Take Screenshot | ⇧⌘S |
-| Start/Stop Recording | ⇧⌘R |
 
 ## How It Works
 
