@@ -6,6 +6,8 @@ A native macOS companion app for your [Commodore 64 Ultimate](https://www.commod
 
 More screenshots: [File manager](screenshots/C64%20Ultimate%20Toolbox%20Screenshot%201.png) · [BASIC Scratchpad](screenshots/C64%20Ultimate%20Toolbox%20Screenshot%202.png)
 
+Demo Video (Recorded for App Review): [https://youtu.be/_2wJO2wOGm8](https://youtu.be/_2wJO2wOGm8)
+
 ## Features
 
 - **Two connection modes** — Viewer Mode passively listens for streams; Toolbox Mode connects via REST API and FTP for full device control
