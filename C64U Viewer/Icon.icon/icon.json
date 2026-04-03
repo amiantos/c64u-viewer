@@ -1,7 +1,5 @@
 {
-  "fill" : {
-    "automatic-gradient" : "display-p3:0.13333,0.12549,0.51373,1.00000"
-  },
+  "fill" : "system-dark",
   "groups" : [
     {
       "layers" : [
@@ -15,20 +13,7 @@
           "fill-specializations" : [
             {
               "value" : {
-                "linear-gradient" : [
-                  "display-p3:0.30213,0.29613,0.64909,1.00000",
-                  "srgb:0.13333,0.12549,0.51373,1.00000"
-                ],
-                "orientation" : {
-                  "start" : {
-                    "x" : 0.5,
-                    "y" : -0.589358997781274
-                  },
-                  "stop" : {
-                    "x" : 0.5,
-                    "y" : 1.5039323455706266
-                  }
-                }
+                "solid" : "extended-gray:0.00000,1.00000"
               }
             },
             {
