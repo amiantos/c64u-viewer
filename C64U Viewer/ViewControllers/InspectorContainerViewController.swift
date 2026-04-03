@@ -139,44 +139,8 @@ final class InspectorContainerViewController: NSViewController {
             view.removeFromSuperview()
         }
 
-        switch panel {
-        case .system:
-            guard let systemVC = currentChild as? SystemViewController else { break }
-
-            let titleLabel = NSTextField(labelWithString: "System")
-            titleLabel.font = .systemFont(ofSize: 11, weight: .medium)
-            titleLabel.textColor = .secondaryLabelColor
-            titleLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-
-            let refreshButton = NSButton(image: NSImage(systemSymbolName: "arrow.clockwise", accessibilityDescription: "Refresh")!, target: systemVC, action: #selector(SystemViewController.refreshAll))
-            refreshButton.bezelStyle = .toolbar
-            refreshButton.controlSize = .small
-            refreshButton.toolTip = "Refresh all device data"
-
-            let saveButton = NSButton(image: NSImage(systemSymbolName: "square.and.arrow.down", accessibilityDescription: "Save to Flash")!, target: systemVC, action: #selector(SystemViewController.saveToFlash))
-            saveButton.bezelStyle = .toolbar
-            saveButton.controlSize = .small
-            saveButton.toolTip = "Save configuration to flash"
-
-            let resetButton = NSButton(image: NSImage(systemSymbolName: "arrow.uturn.backward", accessibilityDescription: "Reset to Default")!, target: systemVC, action: #selector(SystemViewController.resetToDefault))
-            resetButton.bezelStyle = .toolbar
-            resetButton.controlSize = .small
-            resetButton.toolTip = "Reset configuration to defaults"
-
-            actionBar.addArrangedSubview(titleLabel)
-            actionBar.addArrangedSubview(NSView()) // spacer
-            actionBar.addArrangedSubview(refreshButton)
-            actionBar.addArrangedSubview(saveButton)
-            actionBar.addArrangedSubview(resetButton)
-
-        case .displayAndAudio:
-            actionBar.isHidden = true
-            actionBarSeparator.isHidden = true
-            return
-        }
-
-        actionBar.isHidden = false
-        actionBarSeparator.isHidden = false
+        actionBar.isHidden = true
+        actionBarSeparator.isHidden = true
     }
 
 }

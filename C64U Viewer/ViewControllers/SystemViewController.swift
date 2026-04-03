@@ -105,7 +105,20 @@ final class SystemViewController: NSViewController {
         searchField.translatesAutoresizingMaskIntoConstraints = false
         searchField.target = self
         searchField.action = #selector(searchChanged(_:))
-        stack.addArrangedSubview(searchField)
+
+        let refreshButton = PillButton(symbolName: "arrow.clockwise", accessibilityDescription: "Refresh", target: self, action: #selector(refreshAll))
+        refreshButton.toolTip = "Refresh all device data"
+
+        let saveButton = PillButton(symbolName: "memorychip", accessibilityDescription: "Save to Flash", target: self, action: #selector(saveToFlash))
+        saveButton.toolTip = "Save configuration to flash"
+
+        let searchRow = NSStackView(views: [searchField, refreshButton, saveButton])
+        searchRow.orientation = .horizontal
+        searchRow.distribution = .fill
+        searchRow.spacing = 4
+        searchRow.translatesAutoresizingMaskIntoConstraints = false
+        searchField.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        stack.addArrangedSubview(searchRow)
 
         configStack = NSStackView()
         configStack.orientation = .vertical
@@ -128,7 +141,7 @@ final class SystemViewController: NSViewController {
             stack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 12),
             stack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -12),
             stack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -12),
-            searchField.widthAnchor.constraint(equalTo: stack.widthAnchor),
+            searchRow.widthAnchor.constraint(equalTo: stack.widthAnchor),
             configStack.widthAnchor.constraint(equalTo: stack.widthAnchor),
         ])
 
@@ -214,6 +227,7 @@ final class SystemViewController: NSViewController {
     private func addInfoRow(_ label: String, value: String, to stack: NSStackView) {
         let valueLabel = NSTextField(labelWithString: value)
         valueLabel.font = .systemFont(ofSize: 11)
+        valueLabel.textColor = .secondaryLabelColor
         addInfoRowWithLabel(label, valueLabel: valueLabel, to: stack)
     }
 
@@ -225,7 +239,7 @@ final class SystemViewController: NSViewController {
 
         let nameLabel = NSTextField(labelWithString: label)
         nameLabel.font = .systemFont(ofSize: 11, weight: .medium)
-        nameLabel.textColor = .secondaryLabelColor
+        nameLabel.textColor = .labelColor
         nameLabel.widthAnchor.constraint(equalToConstant: 70).isActive = true
 
         row.addArrangedSubview(nameLabel)
@@ -525,16 +539,29 @@ final class SystemViewController: NSViewController {
 
     private func addSection(_ title: String, to stack: NSStackView) {
         let label = NSTextField(labelWithString: title)
-        label.font = .systemFont(ofSize: 11, weight: .semibold)
+        label.font = .systemFont(ofSize: 13, weight: .bold)
+        label.textColor = .secondaryLabelColor
         stack.addArrangedSubview(label)
     }
 
     private func addSeparator(to stack: NSStackView) {
+        let topSpacer = NSView()
+        topSpacer.translatesAutoresizingMaskIntoConstraints = false
+        topSpacer.heightAnchor.constraint(equalToConstant: 4).isActive = true
+        topSpacer.setContentHuggingPriority(.required, for: .vertical)
+        stack.addArrangedSubview(topSpacer)
+
         let sep = NSBox()
         sep.boxType = .separator
         sep.translatesAutoresizingMaskIntoConstraints = false
         stack.addArrangedSubview(sep)
         sep.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+
+        let bottomSpacer = NSView()
+        bottomSpacer.translatesAutoresizingMaskIntoConstraints = false
+        bottomSpacer.heightAnchor.constraint(equalToConstant: 4).isActive = true
+        bottomSpacer.setContentHuggingPriority(.required, for: .vertical)
+        stack.addArrangedSubview(bottomSpacer)
     }
 }
 

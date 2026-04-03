@@ -11,8 +11,8 @@ enum InspectorPanel: String, CaseIterable {
 
     var label: String {
         switch self {
-        case .system: "System"
-        case .displayAndAudio: "Settings"
+        case .system: "Device Info"
+        case .displayAndAudio: "App Settings"
         }
     }
 
