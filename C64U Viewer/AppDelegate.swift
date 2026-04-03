@@ -6,7 +6,8 @@ import AppKit
 
 final class AppDelegate: NSObject, NSApplicationDelegate, DeviceWindowControllerDelegate {
     private var openDeviceWindowController: OpenDeviceWindowController?
-    private var deviceWindowControllers: [DeviceWindowController] = []
+    private(set) var deviceWindowControllers: [DeviceWindowController] = []
+    private var scratchpadWindowControllers: [BASICScratchpadWindowController] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupMainMenu()
@@ -35,6 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, DeviceWindowController
         // File menu
         let fileMenuItem = NSMenuItem()
         let fileMenu = NSMenu(title: "File")
+        fileMenu.addItem(withTitle: "New BASIC Scratchpad", action: #selector(newBASICScratchpad), keyEquivalent: "n")
         fileMenu.addItem(withTitle: "Open Device…", action: #selector(showOpenDeviceWindow), keyEquivalent: "o")
         fileMenu.addItem(.separator())
         fileMenu.addItem(withTitle: "Close Window", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
@@ -104,10 +106,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate, DeviceWindowController
         controller.delegate = self
         controller.showWindow(nil)
         deviceWindowControllers.append(controller)
+        NotificationCenter.default.post(name: .deviceListDidChange, object: nil)
     }
 
     func deviceWindowDidClose(_ controller: DeviceWindowController) {
         deviceWindowControllers.removeAll { $0 === controller }
+        NotificationCenter.default.post(name: .deviceListDidChange, object: nil)
+    }
+
+    // MARK: - BASIC Scratchpad Windows
+
+    @objc func newBASICScratchpad() {
+        let controller = BASICScratchpadWindowController()
+        controller.showWindow(nil)
+        scratchpadWindowControllers.append(controller)
+    }
+
+    func scratchpadWindowDidClose(_ controller: BASICScratchpadWindowController) {
+        scratchpadWindowControllers.removeAll { $0 === controller }
+    }
+
+    // MARK: - Toolbox Connections
+
+    func toolboxConnections() -> [(label: String, connection: C64Connection)] {
+        deviceWindowControllers.compactMap { controller in
+            let conn = controller.connection
+            guard conn.connectionMode == .toolbox, conn.isConnected else { return nil }
+            let label: String
+            if let info = conn.deviceInfo {
+                label = info.hostname
+            } else if let baseURL = conn.apiClient?.baseURL {
+                label = baseURL
+            } else {
+                label = "Unknown Device"
+            }
+            return (label: label, connection: conn)
+        }
     }
 }
 

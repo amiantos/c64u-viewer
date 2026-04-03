@@ -41,10 +41,7 @@ final class C64Connection {
     var isMuted = false
 
     // Tool panel state
-    var basicScratchpadCode: String = BASICSamples.helloWorld
     var fileManagerCurrentPath: String = "/"
-    var basicScratchpadFileURL: URL? = nil
-    var basicScratchpadSavedContent: String = BASICSamples.helloWorld
 
     private(set) var framesPerSecond: Double = 0
     private var frameCount = 0

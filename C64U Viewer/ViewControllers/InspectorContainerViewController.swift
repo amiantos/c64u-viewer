@@ -3,10 +3,9 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 import AppKit
-internal import UniformTypeIdentifiers
 
 /// Container for the right inspector panel. Holds a segmented control
-/// at the top for switching between BASIC / System / Display & Audio,
+/// at the top for switching between System / Display & Audio,
 /// an optional action bar for tool-specific buttons, and the active
 /// panel's view controller below.
 final class InspectorContainerViewController: NSViewController {
@@ -112,8 +111,6 @@ final class InspectorContainerViewController: NSViewController {
         // Create new child view controller
         let child: NSViewController
         switch panel {
-        case .basicScratchpad:
-            child = BASICScratchpadViewController(connection: connection)
         case .system:
             child = SystemViewController(connection: connection)
         case .displayAndAudio:
@@ -143,36 +140,6 @@ final class InspectorContainerViewController: NSViewController {
         }
 
         switch panel {
-        case .basicScratchpad:
-            guard let basicVC = currentChild as? BASICScratchpadViewController else { break }
-
-            let titleLabel = NSTextField(labelWithString: basicVC.title ?? "BASIC Scratchpad")
-            titleLabel.font = .systemFont(ofSize: 11, weight: .medium)
-            titleLabel.textColor = .secondaryLabelColor
-            titleLabel.lineBreakMode = .byTruncatingMiddle
-            titleLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-
-            let codesButton = NSButton(image: NSImage(systemSymbolName: "character.bubble", accessibilityDescription: "Special Codes")!, target: basicVC, action: #selector(BASICScratchpadViewController.toggleSpecialCodes))
-            codesButton.bezelStyle = .toolbar
-            codesButton.controlSize = .small
-
-            let fileButton = createBasicFileMenu(basicVC: basicVC)
-
-            let runButton = NSButton(image: NSImage(systemSymbolName: "play.fill", accessibilityDescription: "Run")!, target: basicVC, action: #selector(BASICScratchpadViewController.uploadAndRun))
-            runButton.bezelStyle = .toolbar
-            runButton.controlSize = .small
-
-            actionBar.addArrangedSubview(titleLabel)
-            actionBar.addArrangedSubview(NSView()) // spacer
-            actionBar.addArrangedSubview(codesButton)
-            actionBar.addArrangedSubview(fileButton)
-            actionBar.addArrangedSubview(runButton)
-
-            // Update title when it changes
-            basicVC.onTitleChanged = { [weak titleLabel] newTitle in
-                titleLabel?.stringValue = newTitle
-            }
-
         case .system:
             guard let systemVC = currentChild as? SystemViewController else { break }
 
@@ -212,39 +179,4 @@ final class InspectorContainerViewController: NSViewController {
         actionBarSeparator.isHidden = false
     }
 
-    private func createBasicFileMenu(basicVC: BASICScratchpadViewController) -> NSButton {
-        let button = NSButton(image: NSImage(systemSymbolName: "doc", accessibilityDescription: "File")!, target: nil, action: nil)
-        button.bezelStyle = .toolbar
-        button.controlSize = .small
-
-        let menu = NSMenu()
-        menu.addItem(withTitle: "New", action: #selector(BASICScratchpadViewController.newFile), keyEquivalent: "").target = basicVC
-        menu.addItem(withTitle: "Open…", action: #selector(BASICScratchpadViewController.openFile), keyEquivalent: "").target = basicVC
-        menu.addItem(.separator())
-        menu.addItem(withTitle: "Save", action: #selector(BASICScratchpadViewController.saveFile), keyEquivalent: "").target = basicVC
-        menu.addItem(withTitle: "Save As…", action: #selector(BASICScratchpadViewController.saveFileAs), keyEquivalent: "").target = basicVC
-        menu.addItem(.separator())
-
-        let samplesItem = NSMenuItem(title: "Samples", action: nil, keyEquivalent: "")
-        let samplesMenu = NSMenu()
-        for sample in BASICSamples.all {
-            let item = NSMenuItem(title: sample.name, action: #selector(BASICScratchpadViewController.loadSampleFromMenu(_:)), keyEquivalent: "")
-            item.target = basicVC
-            item.representedObject = sample
-            samplesMenu.addItem(item)
-        }
-        samplesItem.submenu = samplesMenu
-        menu.addItem(samplesItem)
-
-        button.menu = menu
-        button.target = self
-        button.action = #selector(showFileMenu(_:))
-
-        return button
-    }
-
-    @objc private func showFileMenu(_ sender: NSButton) {
-        guard let menu = sender.menu else { return }
-        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.height), in: sender)
-    }
 }

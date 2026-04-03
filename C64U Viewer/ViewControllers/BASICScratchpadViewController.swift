@@ -6,7 +6,7 @@ import AppKit
 internal import UniformTypeIdentifiers
 
 final class BASICScratchpadViewController: NSViewController {
-    let connection: C64Connection
+    let document: BASICScratchpadDocument
     private let editorManager = BASICEditorTextViewManager()
 
     private var errorLabel: NSTextField!
@@ -16,19 +16,16 @@ final class BASICScratchpadViewController: NSViewController {
     private var specialCodesBottomConstraint: NSLayoutConstraint?
     private var statusBarToEditorConstraint: NSLayoutConstraint?
     private var statusBarToCodesConstraint: NSLayoutConstraint?
-    private var isUploading = false
 
-    var isDirty: Bool {
-        connection.basicScratchpadCode != connection.basicScratchpadSavedContent
-    }
+    var isDirty: Bool { document.isDirty }
 
     var currentFileURL: URL? {
-        get { connection.basicScratchpadFileURL }
-        set { connection.basicScratchpadFileURL = newValue }
+        get { document.fileURL }
+        set { document.fileURL = newValue }
     }
 
-    init(connection: C64Connection) {
-        self.connection = connection
+    init(document: BASICScratchpadDocument) {
+        self.document = document
         super.init(nibName: nil, bundle: nil)
         updateTitle()
     }
@@ -81,9 +78,9 @@ final class BASICScratchpadViewController: NSViewController {
         self.view = container
 
         // Set initial text and wire up changes
-        editorManager.setText(connection.basicScratchpadCode)
+        editorManager.setText(document.code)
         editorManager.onTextChange = { [weak self] text in
-            self?.connection.basicScratchpadCode = text
+            self?.document.code = text
             self?.updateLineCount()
             self?.updateTitle()
         }
@@ -101,7 +98,7 @@ final class BASICScratchpadViewController: NSViewController {
     }
 
     private func updateLineCount() {
-        let count = connection.basicScratchpadCode
+        let count = document.code
             .split(separator: "\n", omittingEmptySubsequences: true).count
         lineCountLabel.stringValue = "\(count) line\(count == 1 ? "" : "s")"
     }
@@ -154,8 +151,8 @@ final class BASICScratchpadViewController: NSViewController {
     func loadSample(_ sample: BASICSample) {
         promptIfDirty { [weak self] in
             guard let self else { return }
-            self.connection.basicScratchpadCode = sample.code
-            self.connection.basicScratchpadSavedContent = sample.code
+            self.document.code = sample.code
+            self.document.savedContent = sample.code
             self.currentFileURL = nil
             self.editorManager.setText(sample.code)
             self.errorLabel.isHidden = true
@@ -224,8 +221,8 @@ final class BASICScratchpadViewController: NSViewController {
 
         textView.insertText(code, replacementRange: textView.selectedRange())
 
-        // Update the connection's stored code
-        connection.basicScratchpadCode = textView.string
+        // Update the document's stored code
+        document.code = textView.string
         updateLineCount()
     }
 
@@ -233,8 +230,8 @@ final class BASICScratchpadViewController: NSViewController {
     @objc func newFile() {
         promptIfDirty { [weak self] in
             guard let self else { return }
-            self.connection.basicScratchpadCode = ""
-            self.connection.basicScratchpadSavedContent = ""
+            self.document.code = ""
+            self.document.savedContent = ""
             self.currentFileURL = nil
             self.editorManager.setText("")
             self.errorLabel.isHidden = true
@@ -254,8 +251,8 @@ final class BASICScratchpadViewController: NSViewController {
             panel.allowsMultipleSelection = false
             if panel.runModal() == .OK, let url = panel.url,
                let content = try? String(contentsOf: url, encoding: .utf8) {
-                self.connection.basicScratchpadCode = content
-                self.connection.basicScratchpadSavedContent = content
+                self.document.code = content
+                self.document.savedContent = content
                 self.currentFileURL = url
                 self.editorManager.setText(content)
                 self.errorLabel.isHidden = true
@@ -269,8 +266,8 @@ final class BASICScratchpadViewController: NSViewController {
         if let url = currentFileURL {
             // Save to existing file
             do {
-                try connection.basicScratchpadCode.write(to: url, atomically: true, encoding: .utf8)
-                connection.basicScratchpadSavedContent = connection.basicScratchpadCode
+                try document.code.write(to: url, atomically: true, encoding: .utf8)
+                document.savedContent = document.code
                 updateTitle()
             } catch {
                 errorLabel.stringValue = "Save failed: \(error.localizedDescription)"
@@ -287,9 +284,9 @@ final class BASICScratchpadViewController: NSViewController {
         panel.nameFieldStringValue = currentFileURL?.lastPathComponent ?? "program.bas"
         if panel.runModal() == .OK, let url = panel.url {
             do {
-                try connection.basicScratchpadCode.write(to: url, atomically: true, encoding: .utf8)
+                try document.code.write(to: url, atomically: true, encoding: .utf8)
                 currentFileURL = url
-                connection.basicScratchpadSavedContent = connection.basicScratchpadCode
+                document.savedContent = document.code
                 updateTitle()
             } catch {
                 errorLabel.stringValue = "Save failed: \(error.localizedDescription)"
@@ -334,32 +331,13 @@ final class BASICScratchpadViewController: NSViewController {
         }
     }
 
-    @objc func uploadAndRun() {
-        guard let client = connection.apiClient else { return }
-        guard !isUploading else { return }
+    func showError(_ message: String) {
+        errorLabel.stringValue = message
+        errorLabel.isHidden = false
+    }
 
-        let code = connection.basicScratchpadCode
+    func clearError() {
         errorLabel.isHidden = true
-        isUploading = true
-
-        Task {
-            do {
-                let (data, endAddr) = try BASICTokenizer.tokenize(program: code)
-                try await client.writeMem(address: 0x0801, data: data)
-
-                let ptrData = Data([UInt8(endAddr & 0xFF), UInt8(endAddr >> 8)])
-                try await client.writeMem(address: 0x002D, data: ptrData)
-
-                // Auto-run: R, U, N, RETURN
-                let runBytes: [UInt8] = [0x52, 0x55, 0x4E, 0x0D]
-                try await client.writeMem(address: 0x0277, data: Data(runBytes))
-                try await client.writeMem(address: 0x00C6, data: Data([UInt8(runBytes.count)]))
-            } catch {
-                errorLabel.stringValue = error.localizedDescription
-                errorLabel.isHidden = false
-            }
-            isUploading = false
-        }
     }
 }
 
