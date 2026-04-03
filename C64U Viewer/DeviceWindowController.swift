@@ -179,7 +179,9 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
                 .toggleSidebar,
                 .sidebarTrackingSeparator,
                 .flexibleSpace,
-                .runFile, .pauseResume, .resetMachine, .rebootMachine, .powerOff,
+                .pauseResume, .resetMachine, .rebootMachine, .powerOff,
+                .flexibleSpace,
+                .newScratchpad, .runFile,
                 .flexibleSpace,
                 .keyboard,
                 .flexibleSpace,
@@ -207,7 +209,7 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
         [
             .toggleSidebar, .sidebarTrackingSeparator,
-            .runFile, .keyboard,
+            .newScratchpad, .runFile, .keyboard,
             .flexibleSpace,
             .pauseResume, .resetMachine, .rebootMachine, .powerOff,
             .toggleDebugPanel, .takeScreenshot, .toggleRecording,
@@ -220,8 +222,10 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
         case .inspectorTrackingSeparator:
             let dividerIndex = splitViewController.splitViewItems.count - 2
             return NSTrackingSeparatorToolbarItem(identifier: itemIdentifier, splitView: splitViewController.splitView, dividerIndex: max(0, dividerIndex))
+        case .newScratchpad:
+            return makeToolbarItem(itemIdentifier, label: "New Scratchpad", icon: "square.and.pencil", action: #selector(newScratchpadTapped))
         case .runFile:
-            return makeToolbarItem(itemIdentifier, label: "Run File", icon: "doc.fill.badge.plus", action: #selector(runFileTapped))
+            return makeToolbarItem(itemIdentifier, label: "Run File", icon: "document.badge.arrow.up.fill", action: #selector(runFileTapped))
         case .keyboard:
             let isOn = connection.keyboardForwarder?.isEnabled == true
             return makeToolbarItem(itemIdentifier, label: "Send Keyboard", icon: isOn ? "keyboard.fill" : "keyboard", action: #selector(toggleKeyboard))
@@ -239,7 +243,7 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
             }
         case .toggleDebugPanel:
             let isVisible = debugPanelItem?.isCollapsed == false
-            return makeToolbarItem(itemIdentifier, label: "Debug", icon: isVisible ? "ladybug.fill" : "ladybug", action: #selector(toggleDebugPanel))
+            return makeToolbarItem(itemIdentifier, label: "Debug", icon: isVisible ? "apple.terminal.fill" : "apple.terminal", action: #selector(toggleDebugPanel))
         case .toggleInspector:
             let isVisible = inspectorItem?.isCollapsed == false
             return makeToolbarItem(itemIdentifier, label: "Inspector", icon: isVisible ? "sidebar.trailing" : "sidebar.trailing", action: #selector(toggleInspector))
@@ -277,6 +281,10 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
     }
 
     // MARK: - Toolbar Actions
+
+    @objc private func newScratchpadTapped() {
+        (NSApp.delegate as? AppDelegate)?.newBASICScratchpad()
+    }
 
     @objc private func runFileTapped() {
         let panel = NSOpenPanel()
@@ -478,4 +486,5 @@ extension NSToolbarItem.Identifier {
     static let inspectorTrackingSeparator = NSToolbarItem.Identifier("inspectorTrackingSeparator")
     static let takeScreenshot = NSToolbarItem.Identifier("takeScreenshot")
     static let toggleRecording = NSToolbarItem.Identifier("toggleRecording")
+    static let newScratchpad = NSToolbarItem.Identifier("newScratchpad")
 }

@@ -55,7 +55,7 @@ final class DebugMonitorViewController: NSViewController, NSTextViewDelegate {
 
         self.view = container
 
-        appendOutput("Ultimate 64 / II+ Remote Monitor\nType 'help' for a list of commands.\n")
+        appendOutput("Ultimate Toolbox Remote Monitor\nType 'help' for a list of commands.\n")
         showPrompt()
     }
 

@@ -36,8 +36,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, DeviceWindowController
         // File menu
         let fileMenuItem = NSMenuItem()
         let fileMenu = NSMenu(title: "File")
-        fileMenu.addItem(withTitle: "New BASIC Scratchpad", action: #selector(newBASICScratchpad), keyEquivalent: "n")
         fileMenu.addItem(withTitle: "Open Device…", action: #selector(showOpenDeviceWindow), keyEquivalent: "o")
+        fileMenu.addItem(withTitle: "New BASIC Scratchpad", action: #selector(newBASICScratchpad), keyEquivalent: "n")
         fileMenu.addItem(.separator())
 
         // BASIC Scratchpad file operations (auto-disable when no scratchpad is key)
