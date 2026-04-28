@@ -4,7 +4,7 @@ A native macOS companion app for your [Commodore 64 Ultimate](https://www.commod
 
 ![C64 Ultimate Toolbox screenshot showing all panels](screenshots/C64%20Ultimate%20Toolbox%20Screenshot%201.png)
 
-More screenshots: [File manager](screenshots/C64%20Ultimate%20Toolbox%20Screenshot%201.png) · [BASIC Scratchpad](screenshots/C64%20Ultimate%20Toolbox%20Screenshot%202.png)
+More screenshots: [File manager](screenshots/C64%20Ultimate%20Toolbox%20Screenshot%202.png) · [BASIC Scratchpad](screenshots/C64%20Ultimate%20Toolbox%20Screenshot%203.png)
 
 Demo Video (Recorded for App Review): [https://youtu.be/_2wJO2wOGm8](https://youtu.be/_2wJO2wOGm8)
 
