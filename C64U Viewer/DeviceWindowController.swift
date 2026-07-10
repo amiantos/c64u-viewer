@@ -155,7 +155,7 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
         inspItem.maximumThickness = 700
         inspItem.canCollapse = true
         inspItem.isCollapsed = true
-        inspItem.automaticallyAdjustsSafeAreaInsets = true
+        if #available(macOS 26.0, *) { inspItem.automaticallyAdjustsSafeAreaInsets = true }
         splitViewController.addSplitViewItem(inspItem)
         inspectorItem = inspItem
     }
