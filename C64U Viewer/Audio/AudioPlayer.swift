@@ -21,8 +21,9 @@ final class AudioPlayer: @unchecked Sendable {
     }
 
     init() {
-        // 48kHz stereo 16-bit integer (close enough to PAL 47982.89 / NTSC 47940.34)
-        format = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: 48000, channels: 2, interleaved: true)!
+        // 48kHz stereo (close enough to PAL 47982.89 / NTSC 47940.34). Mixer inputs
+        // require the standard float32 format.
+        format = AVAudioFormat(standardFormatWithSampleRate: 48000, channels: 2)!
     }
 
     func start() {
@@ -60,12 +61,13 @@ final class AudioPlayer: @unchecked Sendable {
         }
         buffer.frameLength = AVAudioFrameCount(sampleCount)
 
-        // Copy interleaved 16-bit PCM data directly into the buffer
+        // Convert the interleaved 16-bit samples (L,R,L,R,...) into the buffer's float channels
         pcmData.withUnsafeBytes { srcPtr in
-            guard let src = srcPtr.baseAddress else { return }
-            if let dst = buffer.int16ChannelData?[0] {
-                // Interleaved: copy all samples (L,R,L,R,...)
-                memcpy(dst, src, pcmData.count)
+            let src = srcPtr.bindMemory(to: Int16.self)
+            guard let left = buffer.floatChannelData?[0], let right = buffer.floatChannelData?[1] else { return }
+            for i in 0 ..< sampleCount {
+                left[i] = Float(src[i * 2]) / 32768
+                right[i] = Float(src[i * 2 + 1]) / 32768
             }
         }
 
