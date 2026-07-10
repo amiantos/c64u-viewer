@@ -81,6 +81,9 @@ final class DeviceWindowController: NSWindowController, NSToolbarDelegate {
             return false
         }
 
+        // Leave menu shortcuts to the menu bar rather than typing them on the C64.
+        guard !event.modifierFlags.contains(.command) else { return false }
+
         switch Int(event.keyCode) {
         case 36: forwarder.sendKey(0x0D); return true // Return
         case 51: forwarder.sendKey(0x14); return true // Delete
