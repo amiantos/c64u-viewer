@@ -10,7 +10,7 @@ struct DeviceInfo: Codable, Sendable {
     let fpgaVersion: String
     let coreVersion: String
     let hostname: String
-    let uniqueId: String
+    let uniqueId: String?
 
     enum CodingKeys: String, CodingKey {
         case product, hostname
