@@ -139,6 +139,9 @@ final class C64Connection {
         let client = C64APIClient(host: ip, password: password)
         apiClient = client
 
+        // Callers update AppKit from the completion, so deliver it on the main queue.
+        let finish: (Bool) -> Void = { success in DispatchQueue.main.async { completion?(success) } }
+
         // Verify connection before fully committing
         Task {
             do {
@@ -155,7 +158,7 @@ final class C64Connection {
                 startFPSCounter()
                 recentConnections.addToolbox(ipAddress: ip, password: password, savePassword: savePassword)
                 startStreams()
-                completion?(true)
+                finish(true)
             } catch let error as C64APIError {
                 if case .httpError(403) = error {
                     self.connectionError = "Incorrect password"
@@ -165,13 +168,13 @@ final class C64Connection {
                 Log.error("API error: \(error.localizedDescription)")
                 apiClient = nil
                 connectionMode = nil
-                completion?(false)
+                finish(false)
             } catch {
                 self.connectionError = error.localizedDescription
                 Log.error("API error: \(error.localizedDescription)")
                 apiClient = nil
                 connectionMode = nil
-                completion?(false)
+                finish(false)
             }
         }
     }
