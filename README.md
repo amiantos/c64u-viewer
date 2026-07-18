@@ -27,17 +27,14 @@ Demo Video (Recorded for App Review): [https://youtu.be/_2wJO2wOGm8](https://you
 
 ## Requirements
 
-- macOS 26 or later
+- macOS 15 or later
 - Xcode 26 (to build from source)
 - A Commodore 64 Ultimate device on the local network
 - Toolbox Mode requires FTP File Service and Web Remote Control Service enabled on the device
 
 ## Download
-- [Download C64 Ultimate Toolbox v2.0 for macOS 26 and later](https://amiantos.s3.amazonaws.com/c64-ultimate-toolbox-v2.0.zip)
+- [Download C64 Ultimate Toolbox v2.0.1 for macOS 15 and later](https://amiantos.s3.amazonaws.com/c64-ultimate-toolbox-v2.0.1.zip)
 - Or, [Purchase C64 Ultimate Toolbox on the App Store](https://apps.apple.com/us/app/c64-ultimate-toolbox/id6760209871?mt=12) for automatic updates.
-
-## Download (For Older Macs)
-- [Download C64 Ultimate Toolbox v1.0 for macOS 14.6 and later](https://amiantos.s3.amazonaws.com/c64-ultimate-toolbox-v1.0.zip)
 
 ## Building
 
